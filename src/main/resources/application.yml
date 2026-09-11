@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: gestion-scolaire
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/gestion_scolaire_sls
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    clean-disabled: true
+
+app:
+  bootstrap-admin:
+    enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
+    username: ${APP_BOOTSTRAP_ADMIN_USERNAME:}
+    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+    first-name: ${APP_BOOTSTRAP_ADMIN_FIRST_NAME:}
+    last-name: ${APP_BOOTSTRAP_ADMIN_LAST_NAME:}
+    email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
+
+  security:
+    login:
+      max-failed-attempts: 5
+      lock-duration-minutes: 15
+
+server:
+  port: 8080
+
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax

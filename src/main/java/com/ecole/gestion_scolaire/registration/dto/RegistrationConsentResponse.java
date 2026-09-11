@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import java.time.OffsetDateTime; public record RegistrationConsentResponse(Long id,Long registrationCaseId,String consentType,boolean accepted,OffsetDateTime acceptedAt,Long acceptedByGuardianId,String notes){}

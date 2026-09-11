@@ -1,0 +1,2 @@
+package com.ecole.gestion_scolaire.student.dto; import jakarta.validation.constraints.*; import java.time.LocalDate;
+public record AuthorizedPickupPersonRequest(@NotBlank @Size(max=100) String firstName,@NotBlank @Size(max=100) String lastName,@Size(max=100) String relationship,@NotBlank @Size(max=30) String phone,@Size(max=100) String identityDocumentNumber,@Size(max=150) String issuedBy,LocalDate validFrom,LocalDate validUntil,boolean active){}

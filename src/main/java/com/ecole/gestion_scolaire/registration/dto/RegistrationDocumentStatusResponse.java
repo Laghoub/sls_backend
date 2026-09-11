@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import java.time.OffsetDateTime; public record RegistrationDocumentStatusResponse(Long id,Long registrationCaseId,Long requirementId,String requirementCode,String requirementName,boolean required,boolean provided,OffsetDateTime providedAt,boolean verified,Long verifiedById,OffsetDateTime verifiedAt,String notes){}

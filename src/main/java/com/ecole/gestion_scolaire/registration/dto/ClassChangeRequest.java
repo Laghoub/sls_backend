@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import jakarta.validation.constraints.NotNull; import java.time.LocalDate; public record ClassChangeRequest(@NotNull Long classGroupId,LocalDate effectiveDate,String reason){}

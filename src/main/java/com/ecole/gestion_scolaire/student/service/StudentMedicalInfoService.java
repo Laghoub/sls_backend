@@ -1,0 +1,8 @@
+package com.ecole.gestion_scolaire.student.service;
+import com.ecole.gestion_scolaire.student.dto.*; import com.ecole.gestion_scolaire.student.entity.StudentMedicalInfo; import com.ecole.gestion_scolaire.student.repository.StudentMedicalInfoRepository; import com.ecole.gestion_scolaire.common.exception.ResourceNotFoundException; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional;
+@Service @Transactional(readOnly=true) public class StudentMedicalInfoService{
+ private final StudentMedicalInfoRepository repo; private final StudentService students; public StudentMedicalInfoService(StudentMedicalInfoRepository r,StudentService s){repo=r;students=s;}
+ public StudentMedicalInfoResponse findByStudent(Long id){students.get(id);return repo.findByStudentId(id).map(this::map).orElseThrow(()->new ResourceNotFoundException("Informations médicales introuvables pour l'élève : "+id));}
+ @Transactional public StudentMedicalInfoResponse save(Long id,StudentMedicalInfoRequest r){StudentMedicalInfo x=repo.findByStudentId(id).orElseGet(()->{StudentMedicalInfo n=new StudentMedicalInfo();n.setStudent(students.get(id));return n;});x.setBloodGroup(r.bloodGroup());x.setMedicalConditions(r.medicalConditions());x.setAllergies(r.allergies());x.setTreatments(r.treatments());x.setEmergencyNotes(r.emergencyNotes());return map(repo.save(x));}
+ private StudentMedicalInfoResponse map(StudentMedicalInfo x){return new StudentMedicalInfoResponse(x.getId(),x.getStudent().getId(),x.getBloodGroup(),x.getMedicalConditions(),x.getAllergies(),x.getTreatments(),x.getEmergencyNotes(),x.getUpdatedAt());}
+}

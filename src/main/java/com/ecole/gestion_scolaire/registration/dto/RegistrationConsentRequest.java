@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import jakarta.validation.constraints.*; public record RegistrationConsentRequest(@NotBlank @Size(max=50) String consentType,boolean accepted,Long acceptedByGuardianId,String notes){}

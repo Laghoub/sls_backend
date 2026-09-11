@@ -1,0 +1,10 @@
+package com.ecole.gestion_scolaire.registration.entity;
+import jakarta.persistence.*; import java.time.OffsetDateTime;
+@Entity @Table(name="registration_document_status",uniqueConstraints=@UniqueConstraint(name="uq_registration_document_status_registration_case_id_requirement_id",columnNames={"registration_case_id","requirement_id"}))
+public class RegistrationDocumentStatus {
+ @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="registration_case_id",nullable=false) private RegistrationCase registrationCase;
+ @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="requirement_id",nullable=false) private RegistrationDocumentRequirement requirement; @Column(nullable=false) private boolean provided; @Column(name="provided_at") private OffsetDateTime providedAt;
+ @Column(nullable=false) private boolean verified; @Column(name="verified_by") private Long verifiedById; @Column(name="verified_at") private OffsetDateTime verifiedAt; @Column(columnDefinition="text") private String notes;
+ public Long getId(){return id;} public RegistrationCase getRegistrationCase(){return registrationCase;} public void setRegistrationCase(RegistrationCase v){registrationCase=v;} public RegistrationDocumentRequirement getRequirement(){return requirement;} public void setRequirement(RegistrationDocumentRequirement v){requirement=v;}
+ public boolean isProvided(){return provided;} public void setProvided(boolean v){provided=v;} public OffsetDateTime getProvidedAt(){return providedAt;} public void setProvidedAt(OffsetDateTime v){providedAt=v;} public boolean isVerified(){return verified;} public void setVerified(boolean v){verified=v;} public Long getVerifiedById(){return verifiedById;} public void setVerifiedById(Long v){verifiedById=v;} public OffsetDateTime getVerifiedAt(){return verifiedAt;} public void setVerifiedAt(OffsetDateTime v){verifiedAt=v;} public String getNotes(){return notes;} public void setNotes(String v){notes=v;}
+}

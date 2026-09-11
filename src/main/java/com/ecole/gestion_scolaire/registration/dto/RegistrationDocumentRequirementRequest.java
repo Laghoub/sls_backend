@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import jakarta.validation.constraints.*; public record RegistrationDocumentRequirementRequest(@NotBlank @Size(max=80) String code,@NotBlank @Size(max=200) String name,@NotBlank @Size(max=50) String applicableTo,boolean required,boolean active){}

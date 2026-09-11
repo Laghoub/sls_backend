@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import java.util.List; public record RegistrationCaseDetailResponse(RegistrationCaseResponse registration,RegistrationInfoResponse registrationInfo,List<RegistrationConsentResponse> consents,List<RegistrationDocumentStatusResponse> documents,RegistrationValidationResponse validation,StudentEnrollmentResponse enrollment){}

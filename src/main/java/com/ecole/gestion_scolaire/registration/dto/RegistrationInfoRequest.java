@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import jakarta.validation.constraints.Size; public record RegistrationInfoRequest(@Size(max=200) String previousSchool,@Size(max=100) String previousClass,String notes){}

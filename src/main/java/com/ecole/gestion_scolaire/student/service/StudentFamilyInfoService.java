@@ -1,0 +1,8 @@
+package com.ecole.gestion_scolaire.student.service;
+import com.ecole.gestion_scolaire.student.dto.*; import com.ecole.gestion_scolaire.student.entity.StudentFamilyInfo; import com.ecole.gestion_scolaire.student.repository.StudentFamilyInfoRepository; import com.ecole.gestion_scolaire.common.exception.ResourceNotFoundException; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional;
+@Service @Transactional(readOnly=true) public class StudentFamilyInfoService{
+ private final StudentFamilyInfoRepository repo; private final StudentService students; public StudentFamilyInfoService(StudentFamilyInfoRepository r,StudentService s){repo=r;students=s;}
+ public StudentFamilyInfoResponse findByStudent(Long id){students.get(id);return repo.findByStudentId(id).map(this::map).orElseThrow(()->new ResourceNotFoundException("Informations familiales introuvables pour l'élève : "+id));}
+ @Transactional public StudentFamilyInfoResponse save(Long id,StudentFamilyInfoRequest r){StudentFamilyInfo x=repo.findByStudentId(id).orElseGet(()->{StudentFamilyInfo n=new StudentFamilyInfo();n.setStudent(students.get(id));return n;});x.setFatherLifeStatus(r.fatherLifeStatus());x.setMotherLifeStatus(r.motherLifeStatus());x.setParentsDivorced(r.parentsDivorced());x.setNumberOfBrothers(r.numberOfBrothers());x.setNumberOfSisters(r.numberOfSisters());x.setNotes(r.notes());return map(repo.save(x));}
+ private StudentFamilyInfoResponse map(StudentFamilyInfo x){return new StudentFamilyInfoResponse(x.getId(),x.getStudent().getId(),x.getFatherLifeStatus(),x.getMotherLifeStatus(),x.getParentsDivorced(),x.getNumberOfBrothers(),x.getNumberOfSisters(),x.getNotes(),x.getUpdatedAt());}
+}

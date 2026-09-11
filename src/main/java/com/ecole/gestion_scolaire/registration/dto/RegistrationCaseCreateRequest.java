@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import jakarta.validation.constraints.*; import java.time.LocalDate; public record RegistrationCaseCreateRequest(@NotNull Long schoolYearId,@NotNull Long studentId,@NotNull Long guardianId,@NotNull Long requestedLevelId,Long requestedClassGroupId,LocalDate registrationDate){}

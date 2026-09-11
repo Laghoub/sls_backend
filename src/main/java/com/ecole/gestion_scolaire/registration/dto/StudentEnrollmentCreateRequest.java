@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import com.ecole.gestion_scolaire.registration.enums.EnrollmentEntryType; import jakarta.validation.constraints.NotNull; import java.time.LocalDate; public record StudentEnrollmentCreateRequest(@NotNull Long classGroupId,LocalDate enrollmentDate,@NotNull EnrollmentEntryType entryType){}

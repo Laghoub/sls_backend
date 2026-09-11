@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import jakarta.validation.constraints.NotNull; public record RegistrationCaseUpdateRequest(@NotNull Long guardianId,@NotNull Long requestedLevelId,Long requestedClassGroupId){}

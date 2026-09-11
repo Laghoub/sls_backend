@@ -1,0 +1,2 @@
+package com.ecole.gestion_scolaire.student.dto; import jakarta.validation.constraints.*; import java.time.LocalDate;
+public record StudentGuardianRequest(@NotNull Long guardianId,@NotBlank @Size(max=30) String relationshipType,boolean legalGuardian,boolean financialResponsible,boolean primaryContact,Boolean livesWithStudent,boolean pickupAuthorized,boolean active,LocalDate validFrom,LocalDate validUntil){}

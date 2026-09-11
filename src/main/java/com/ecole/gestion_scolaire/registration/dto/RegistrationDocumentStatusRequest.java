@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.registration.dto; import jakarta.validation.constraints.NotNull; public record RegistrationDocumentStatusRequest(@NotNull Long requirementId,boolean provided,boolean verified,String notes){}

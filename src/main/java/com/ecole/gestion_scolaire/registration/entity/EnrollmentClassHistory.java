@@ -1,0 +1,7 @@
+package com.ecole.gestion_scolaire.registration.entity;
+import jakarta.persistence.*; import java.time.*;
+@Entity @Table(name="enrollment_class_history") public class EnrollmentClassHistory {
+ @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="student_enrollment_id",nullable=false) private StudentEnrollment enrollment;
+ @Column(name="class_group_id",nullable=false) private Long classGroupId; @Column(name="start_date",nullable=false) private LocalDate startDate; @Column(name="end_date") private LocalDate endDate; @Column(columnDefinition="text") private String reason; @Column(name="created_at",nullable=false) private OffsetDateTime createdAt;
+ @PrePersist void pre(){if(createdAt==null)createdAt=OffsetDateTime.now();} public Long getId(){return id;} public StudentEnrollment getEnrollment(){return enrollment;} public void setEnrollment(StudentEnrollment v){enrollment=v;} public Long getClassGroupId(){return classGroupId;} public void setClassGroupId(Long v){classGroupId=v;} public LocalDate getStartDate(){return startDate;} public void setStartDate(LocalDate v){startDate=v;} public LocalDate getEndDate(){return endDate;} public void setEndDate(LocalDate v){endDate=v;} public String getReason(){return reason;} public void setReason(String v){reason=v;} public OffsetDateTime getCreatedAt(){return createdAt;}
+}
