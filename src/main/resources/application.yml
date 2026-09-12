@@ -23,6 +23,21 @@ spring:
     baseline-on-migrate: false
     clean-disabled: true
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:sls.school2008@gmail.com}
+    password: ${MAIL_PASSWORD:enoi rylu czqq hdch}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
+
+
 app:
   bootstrap-admin:
     enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
@@ -36,6 +51,14 @@ app:
     login:
       max-failed-attempts: 5
       lock-duration-minutes: 15
+
+  finance-email:
+    enabled: ${APP_FINANCE_EMAIL_ENABLED:true}
+    from: ${APP_FINANCE_EMAIL_FROM:sls.school2008@gmail.com}
+    from-name: ${APP_FINANCE_EMAIL_FROM_NAME:Groupe Scolaire Sciences et Lettres}
+    dispatcher:
+      initial-delay-ms: 5000
+      fixed-delay-ms: 30000
 
 server:
   port: 8080

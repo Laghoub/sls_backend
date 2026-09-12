@@ -13,8 +13,12 @@ public class FamilyCredit {
     private Long id;
     @Column(name = "guardian_id", nullable = false)
     private Long guardianId;
-    @Column(name = "source_payment_id", nullable = false)
+    @Column(name = "source_payment_id")
     private Long sourcePaymentId;
+    @Column(name = "source_student_discount_id")
+    private Long sourceStudentDiscountId;
+    @Column(name = "source_type", nullable = false, length = 30)
+    private String sourceType;
     @Column(name = "initial_amount", nullable = false, precision = 14, scale = 2)
     private BigDecimal initialAmount;
     @Column(name = "remaining_amount", nullable = false, precision = 14, scale = 2)
@@ -27,6 +31,7 @@ public class FamilyCredit {
     @PrePersist
     void pre() {
         if (createdAt == null) createdAt = OffsetDateTime.now();
+        if (sourceType == null) sourceType = sourcePaymentId == null ? "DISCOUNT" : "PAYMENT";
     }
 
     public Long getId() {
@@ -48,6 +53,11 @@ public class FamilyCredit {
     public void setSourcePaymentId(Long v) {
         sourcePaymentId = v;
     }
+
+    public Long getSourceStudentDiscountId() { return sourceStudentDiscountId; }
+    public void setSourceStudentDiscountId(Long v) { sourceStudentDiscountId = v; }
+    public String getSourceType() { return sourceType; }
+    public void setSourceType(String v) { sourceType = v; }
 
     public BigDecimal getInitialAmount() {
         return initialAmount;

@@ -38,7 +38,22 @@ public class FamilyCreditService {
     public FamilyCreditResponse create(Long guardianId, Long paymentId, BigDecimal amount) {
         if (amount.signum() <= 0) return null;
         var x = new FamilyCredit();
-        x.setGuardianId(guardianId); x.setSourcePaymentId(paymentId); x.setInitialAmount(amount); x.setRemainingAmount(amount); x.setStatus("AVAILABLE");
+        x.setGuardianId(guardianId); x.setSourcePaymentId(paymentId); x.setSourceType("PAYMENT"); x.setInitialAmount(amount); x.setRemainingAmount(amount); x.setStatus("AVAILABLE");
+        return toResponse(repo.save(x));
+    }
+
+
+    @Transactional
+    public FamilyCreditResponse createFromDiscount(Long guardianId, Long studentDiscountId, BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) return null;
+        var x = new FamilyCredit();
+        x.setGuardianId(guardianId);
+        x.setSourcePaymentId(null);
+        x.setSourceStudentDiscountId(studentDiscountId);
+        x.setSourceType("DISCOUNT");
+        x.setInitialAmount(amount);
+        x.setRemainingAmount(amount);
+        x.setStatus("AVAILABLE");
         return toResponse(repo.save(x));
     }
 
@@ -64,21 +79,24 @@ public class FamilyCreditService {
         if ("CANCELLED".equals(charge.getStatus()) || "PAID".equals(charge.getStatus()))
             throw new FinanceBusinessException("Cette créance n'est pas payable.");
         ensureGuardianOwnsCharge(credit.getGuardianId(), charge);
-        var sourcePayment = payments.findById(credit.getSourcePaymentId()).orElseThrow(() -> new FinanceNotFoundException("Paiement source introuvable."));
-        if (!"VALIDATED".equals(sourcePayment.getStatus())) throw new FinanceBusinessException("Le paiement source de l'avoir n'est pas valide.");
-
         BigDecimal alreadyPaid = allocations.paidForCharge(charge.getId());
         BigDecimal remaining = charge.getFinalAmount().subtract(alreadyPaid).max(BigDecimal.ZERO);
         if (request.amount().compareTo(remaining) > 0) throw new FinanceBusinessException("Le montant dépasse le reste dû de la créance.");
 
-        var allocation = allocations.create(sourcePayment.getId(), new PaymentAllocationRequest(charge.getId(), request.amount()));
+        Long allocationId = null;
+        if (credit.getSourcePaymentId() != null) {
+            var sourcePayment = payments.findById(credit.getSourcePaymentId()).orElseThrow(() -> new FinanceNotFoundException("Paiement source introuvable."));
+            if (!"VALIDATED".equals(sourcePayment.getStatus())) throw new FinanceBusinessException("Le paiement source de l'avoir n'est pas valide.");
+            var allocation = allocations.create(sourcePayment.getId(), new PaymentAllocationRequest(charge.getId(), request.amount()));
+            allocationId = allocation.id();
+        }
         credit.setRemainingAmount(credit.getRemainingAmount().subtract(request.amount()));
         credit.setStatus(credit.getRemainingAmount().signum()==0 ? "USED" : "PARTIALLY_USED");
         repo.save(credit);
 
         var usage = new FamilyCreditUsage();
         usage.setFamilyCreditId(credit.getId()); usage.setGuardianId(credit.getGuardianId()); usage.setStudentChargeId(charge.getId());
-        usage.setPaymentAllocationId(allocation.id()); usage.setAmount(request.amount()); usage = usages.save(usage);
+        usage.setPaymentAllocationId(allocationId); usage.setAmount(request.amount()); usage = usages.save(usage);
 
         refreshCharge(charge);
         if (charge.getRegistrationCaseId()!=null) registrationPayments.refresh(charge.getRegistrationCaseId());
@@ -107,7 +125,7 @@ public class FamilyCreditService {
     }
 
     public FamilyCreditResponse toResponse(FamilyCredit x) {
-        return new FamilyCreditResponse(x.getId(), x.getGuardianId(), x.getSourcePaymentId(), x.getInitialAmount(), x.getRemainingAmount(), x.getStatus(), x.getCreatedAt());
+        return new FamilyCreditResponse(x.getId(), x.getGuardianId(), x.getSourcePaymentId(), x.getSourceStudentDiscountId(), x.getSourceType(), x.getInitialAmount(), x.getRemainingAmount(), x.getStatus(), x.getCreatedAt());
     }
     private FamilyCreditUsageResponse toUsage(FamilyCreditUsage x){ return new FamilyCreditUsageResponse(x.getId(),x.getFamilyCreditId(),x.getGuardianId(),x.getStudentChargeId(),x.getPaymentAllocationId(),x.getAmount(),x.getCreatedAt()); }
 }

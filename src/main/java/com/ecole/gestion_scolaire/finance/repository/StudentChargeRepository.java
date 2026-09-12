@@ -34,4 +34,8 @@ public interface StudentChargeRepository extends JpaRepository<StudentCharge, Lo
             LocalDate billingPeriodStart,
             String status
     );
+    boolean existsByStudentEnrollmentIdAndTariffIdAndBillingPeriodStartAndStatusNot(
+            Long studentEnrollmentId, Long tariffId, LocalDate billingPeriodStart, String status
+    );
 }
+

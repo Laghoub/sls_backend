@@ -22,6 +22,12 @@ public class RefundController {
         return s.byPayment(paymentId, page, size);
     }
 
+    @PostMapping("/reconcile-legacy")
+    @PreAuthorize("hasAuthority('REMBOURSEMENT_CREER')")
+    public java.util.Map<String,Integer> reconcileLegacy() {
+        return java.util.Map.of("reconciled", s.reconcileLegacyRefunds());
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('REMBOURSEMENT_CREER')")
     public RefundResponse create(@Valid @RequestBody RefundRequest r) {

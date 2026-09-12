@@ -21,14 +21,16 @@ public class StudentChargeService {
     private final FinanceReferenceValidator refs;
     private final PaymentAllocationService allocations;
     private final ChargeCalculationService calculator;
+    private final DiscountCalculationService discounts;
 
-    public StudentChargeService(StudentChargeRepository r, FeeTypeRepository f, TariffRepository t, FinanceReferenceValidator v, PaymentAllocationService a, ChargeCalculationService c) {
+    public StudentChargeService(StudentChargeRepository r, FeeTypeRepository f, TariffRepository t, FinanceReferenceValidator v, PaymentAllocationService a, ChargeCalculationService c, DiscountCalculationService discounts) {
         repo = r;
         fees = f;
         tariffs = t;
         refs = v;
         allocations = a;
         calculator = c;
+        this.discounts = discounts;
     }
 
     @Transactional(readOnly = true)
@@ -58,9 +60,16 @@ public class StudentChargeService {
         x.setFeeTypeId(r.feeTypeId());
         x.setTariffId(r.tariffId());
         x.setLabel(r.label().trim());
+        BigDecimal requestedDiscount = r.discountAmount() == null ? BigDecimal.ZERO : r.discountAmount();
+        BigDecimal automaticDiscount = BigDecimal.ZERO;
+        if (r.studentEnrollmentId() != null) {
+            var discountDate = r.billingPeriodStart() != null ? r.billingPeriodStart() : r.dueDate();
+            automaticDiscount = discounts.calculate(r.studentEnrollmentId(), r.feeTypeId(), r.originalAmount(), discountDate).discountAmount();
+        }
+        BigDecimal effectiveDiscount = requestedDiscount.max(automaticDiscount).min(r.originalAmount());
         x.setOriginalAmount(r.originalAmount());
-        x.setDiscountAmount(r.discountAmount());
-        x.setFinalAmount(calculator.finalAmount(r.originalAmount(), r.discountAmount()));
+        x.setDiscountAmount(effectiveDiscount);
+        x.setFinalAmount(calculator.finalAmount(r.originalAmount(), effectiveDiscount));
         x.setDueDate(r.dueDate());
         x.setBillingPeriodStart(r.billingPeriodStart());
         x.setBillingPeriodEnd(r.billingPeriodEnd());

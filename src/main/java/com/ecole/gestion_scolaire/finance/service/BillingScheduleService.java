@@ -21,10 +21,25 @@ public class BillingScheduleService {
     private final TariffRepository tariffs;
     private final FeeTypeRepository fees;
     private final StudentChargeRepository charges;
+    private final DiscountCalculationService discounts;
 
     public BillingScheduleService(StudentEnrollmentRepository e, SchoolYearRepository y, ClassGroupRepository c,
-                                  TariffRepository t, FeeTypeRepository f, StudentChargeRepository sc) {
-        enrollments=e; years=y; classes=c; tariffs=t; fees=f; charges=sc;
+                                  TariffRepository t, FeeTypeRepository f, StudentChargeRepository sc, DiscountCalculationService discounts) {
+        enrollments=e; years=y; classes=c; tariffs=t; fees=f; charges=sc; this.discounts=discounts;
+    }
+
+    /**
+     * Génération standard utilisée automatiquement à la création d'une
+     * scolarisation. Sans type de frais forcé ni période forcée, le moteur
+     * sélectionne uniquement les frais actifs de catégorie SCOLARITE et couvre
+     * la période allant de la date d'entrée de l'élève à la fin de l'année.
+     */
+    @Transactional
+    public InstallmentGenerationResponse generateDefault(Long enrollmentId) {
+        return generate(
+                enrollmentId,
+                new InstallmentGenerationRequest(null, null, null)
+        );
     }
 
     @Transactional
@@ -47,7 +62,7 @@ public class BillingScheduleService {
             var fee = fees.findById(t.getFeeTypeId()).orElse(null);
             if (fee==null || !fee.isActive()) continue;
             if (request.feeTypeId()==null && !"SCOLARITE".equalsIgnoreCase(fee.getCategory())) continue;
-            if (!scopeMatches(t, cg.getId(), cg.getLevel().getId(), cg.getCampus().getId())) continue;
+            if (!scopeMatches(t, cg.getId(), cg.getLevel().getId(), cg.getLevel().getCycle().getId(), cg.getCampus().getId())) continue;
             byFee.computeIfAbsent(t.getFeeTypeId(), k -> new ArrayList<>()).add(t);
         }
 
@@ -66,8 +81,9 @@ public class BillingScheduleService {
                 sc.setStudentEnrollmentId(enrollmentId);
                 sc.setFeeTypeId(fee.getId()); sc.setTariffId(tariff.getId());
                 sc.setLabel(label(fee.getName(), period[0], frequency));
-                sc.setOriginalAmount(tariff.getAmount()); sc.setDiscountAmount(java.math.BigDecimal.ZERO);
-                sc.setFinalAmount(tariff.getAmount()); sc.setDueDate(period[0]);
+                var reduction = discounts.calculate(enrollmentId, fee.getId(), tariff.getAmount(), period[0]).discountAmount();
+                sc.setOriginalAmount(tariff.getAmount()); sc.setDiscountAmount(reduction);
+                sc.setFinalAmount(tariff.getAmount().subtract(reduction).max(java.math.BigDecimal.ZERO)); sc.setDueDate(period[0]);
                 sc.setBillingPeriodStart(period[0]); sc.setBillingPeriodEnd(period[1]); sc.setStatus("DUE");
                 sc = charges.save(sc); ids.add(sc.getId()); created++;
             }
@@ -75,16 +91,17 @@ public class BillingScheduleService {
         return new InstallmentGenerationResponse(enrollmentId, created, skipped, ids);
     }
 
-    private boolean scopeMatches(Tariff t, Long classId, Long levelId, Long campusId) {
+    private boolean scopeMatches(Tariff t, Long classId, Long levelId, Long cycleId, Long campusId) {
         return (t.getClassGroupId()==null || t.getClassGroupId().equals(classId))
                 && (t.getLevelId()==null || t.getLevelId().equals(levelId))
+                && (t.getCycleId()==null || t.getCycleId().equals(cycleId))
                 && (t.getCampusId()==null || t.getCampusId().equals(campusId));
     }
     private Tariff bestTariff(List<Tariff> list, LocalDate date) {
         return list.stream().filter(t -> !date.isBefore(t.getValidFrom()) && (t.getValidUntil()==null || !date.isAfter(t.getValidUntil())))
                 .max(Comparator.comparingInt(this::specificity).thenComparing(Tariff::getValidFrom)).orElse(null);
     }
-    private int specificity(Tariff t){ return (t.getClassGroupId()!=null?4:0)+(t.getLevelId()!=null?2:0)+(t.getCampusId()!=null?1:0); }
+    private int specificity(Tariff t){ return (t.getClassGroupId()!=null?8:0)+(t.getLevelId()!=null?4:0)+(t.getCycleId()!=null?2:0)+(t.getCampusId()!=null?1:0); }
     private String bestFrequency(List<Tariff> list, LocalDate date){ var t=bestTariff(list,date); return t==null?null:t.getBillingFrequency(); }
     private List<LocalDate[]> periods(LocalDate from, LocalDate to, String f){
         var out=new ArrayList<LocalDate[]>();

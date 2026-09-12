@@ -49,15 +49,18 @@ public class TariffService {
 
     private void apply(Tariff x, TariffRequest r) {
         refs.schoolYear(r.schoolYearId());
+        refs.cycle(r.cycleId());
         refs.level(r.levelId());
         refs.classGroup(r.classGroupId());
         refs.campus(r.campusId());
+        refs.tariffScope(r.schoolYearId(), r.cycleId(), r.levelId(), r.classGroupId(), r.campusId());
         if (!fees.existsById(r.feeTypeId()))
             throw new FinanceNotFoundException("Type de frais introuvable : " + r.feeTypeId());
         if (r.validUntil() != null && r.validUntil().isBefore(r.validFrom()))
             throw new FinanceBusinessException("La date de fin du tarif est antérieure à la date de début.");
         x.setSchoolYearId(r.schoolYearId());
         x.setFeeTypeId(r.feeTypeId());
+        x.setCycleId(r.cycleId());
         x.setLevelId(r.levelId());
         x.setClassGroupId(r.classGroupId());
         x.setCampusId(r.campusId());
@@ -69,6 +72,6 @@ public class TariffService {
     }
 
     public TariffResponse toResponse(Tariff x) {
-        return new TariffResponse(x.getId(), x.getSchoolYearId(), x.getFeeTypeId(), x.getLevelId(), x.getClassGroupId(), x.getCampusId(), x.getAmount(), x.getBillingFrequency(), x.getValidFrom(), x.getValidUntil(), x.isActive(), x.getCreatedAt(), x.getUpdatedAt());
+        return new TariffResponse(x.getId(), x.getSchoolYearId(), x.getFeeTypeId(), x.getCycleId(), x.getLevelId(), x.getClassGroupId(), x.getCampusId(), x.getAmount(), x.getBillingFrequency(), x.getValidFrom(), x.getValidUntil(), x.isActive(), x.getCreatedAt(), x.getUpdatedAt());
     }
 }

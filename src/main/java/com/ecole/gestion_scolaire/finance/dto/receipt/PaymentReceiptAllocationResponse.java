@@ -9,6 +9,8 @@ public record PaymentReceiptAllocationResponse(
         String studentLastName,
         String studentFirstName,
         String chargeLabel,
-        BigDecimal amount
+        BigDecimal amount,
+        BigDecimal refundedAmount,
+        BigDecimal netAmount
 ) {
 }

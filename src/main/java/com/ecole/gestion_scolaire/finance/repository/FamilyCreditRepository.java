@@ -10,4 +10,6 @@ public interface FamilyCreditRepository extends JpaRepository<FamilyCredit, Long
     List<FamilyCredit> findByGuardianIdAndStatusNotOrderByCreatedAtAsc(Long id, String status);
 
     Page<FamilyCredit> findByGuardianId(Long id, Pageable p);
+
+    List<FamilyCredit> findBySourcePaymentIdOrderByCreatedAtAsc(Long paymentId);
 }

@@ -28,8 +28,10 @@ public class PaymentService {
     private final FinanceReferenceValidator refs;
     private final PaymentNumberGenerator numbers;
     private final RegistrationPaymentService registration;
+    private final CollectionReferenceService collection;
+    private final FinanceEmailService emails;
 
-    public PaymentService(PaymentRepository r, PaymentMethodService m, StudentChargeService c, PaymentAllocationService a, FamilyCreditService f, CashRegisterSessionService s, CashMovementService mv, CurrentFinanceAccountService u, FinanceReferenceValidator v, PaymentNumberGenerator n, RegistrationPaymentService i) {
+    public PaymentService(PaymentRepository r, PaymentMethodService m, StudentChargeService c, PaymentAllocationService a, FamilyCreditService f, CashRegisterSessionService s, CashMovementService mv, CurrentFinanceAccountService u, FinanceReferenceValidator v, PaymentNumberGenerator n, RegistrationPaymentService i, CollectionReferenceService collection, FinanceEmailService emails) {
         repo = r;
         methods = m;
         charges = c;
@@ -41,6 +43,8 @@ public class PaymentService {
         refs = v;
         numbers = n;
         registration = i;
+        this.collection = collection;
+        this.emails = emails;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +78,7 @@ public class PaymentService {
             if (!ids.add(a.studentChargeId()))
                 throw new FinanceBusinessException("Une créance ne peut apparaître qu'une fois dans le paiement.");
             var c = charges.get(a.studentChargeId());
+            collection.assertGuardianCanPayCharge(r.guardianId(), c);
             if ("CANCELLED".equals(c.getStatus()) || "PAID".equals(c.getStatus()))
                 throw new FinanceBusinessException("Créance non payable : " + c.getId());
             BigDecimal remaining = charges.toResponse(c).remainingAmount();
@@ -85,6 +90,9 @@ public class PaymentService {
         }
         if (allocated.compareTo(r.totalAmount()) > 0)
             throw new FinanceBusinessException("La ventilation dépasse le montant du paiement.");
+        boolean requiresCashSession = !"VIREMENT".equalsIgnoreCase(method.getCode());
+        if (requiresCashSession && r.cashRegisterSessionId() == null)
+            throw new FinanceBusinessException("Une session de caisse ouverte est obligatoire pour ce mode de paiement.");
         if (r.cashRegisterSessionId() != null) sessions.getOpen(r.cashRegisterSessionId());
         Long uid = current.id();
         var x = new Payment();
@@ -109,6 +117,7 @@ public class PaymentService {
         if (r.cashRegisterSessionId() != null)
             movements.payment(r.cashRegisterSessionId(), x.getId(), x.getTotalAmount(), x.getPaymentNumber());
         for (Long registrationId : registrations.keySet()) registration.refresh(registrationId);
+        emails.queuePaymentReceipt(x.getId());
         return new PaymentDetailResponse(toResponse(x), allocations.byPayment(x.getId()), credit);
     }
 

@@ -20,7 +20,7 @@ public class FamilyCreditUsage {
     @Column(name = "student_charge_id", nullable = false)
     private Long studentChargeId;
 
-    @Column(name = "payment_allocation_id", nullable = false)
+    @Column(name = "payment_allocation_id")
     private Long paymentAllocationId;
 
     @Column(nullable = false, precision = 14, scale = 2)

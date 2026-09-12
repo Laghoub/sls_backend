@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface FamilyCreditUsageRepository extends JpaRepository<FamilyCreditUsage, Long> {
     List<FamilyCreditUsage> findByFamilyCreditIdOrderByCreatedAtDesc(Long familyCreditId);
+    java.util.List<FamilyCreditUsage> findByStudentChargeIdAndPaymentAllocationIdIsNull(Long studentChargeId);
+    boolean existsByPaymentAllocationId(Long paymentAllocationId);
 }
