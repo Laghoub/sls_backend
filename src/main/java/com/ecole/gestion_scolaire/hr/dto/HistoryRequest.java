@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import jakarta.validation.constraints.NotBlank; import java.time.LocalDate; public record HistoryRequest(@NotBlank String institutionName,String positionTitle,LocalDate startDate,LocalDate endDate,String description){}

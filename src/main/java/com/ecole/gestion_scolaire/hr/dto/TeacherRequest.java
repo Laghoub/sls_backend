@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import com.ecole.gestion_scolaire.hr.enums.TeacherStatus; import jakarta.validation.constraints.NotNull; public record TeacherRequest(@NotNull Long employeeId,TeacherStatus status){}

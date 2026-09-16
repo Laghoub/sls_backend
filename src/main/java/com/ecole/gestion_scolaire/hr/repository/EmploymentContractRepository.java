@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.repository; import com.ecole.gestion_scolaire.hr.entity.EmploymentContract; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*;  public interface EmploymentContractRepository extends JpaRepository<EmploymentContract,Long> { List<EmploymentContract> findByEmployeeIdOrderByStartDateDesc(Long employeeId); }

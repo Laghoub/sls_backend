@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import jakarta.validation.constraints.NotBlank; public record StaffNoteRequest(@NotBlank String category,@NotBlank String content){}

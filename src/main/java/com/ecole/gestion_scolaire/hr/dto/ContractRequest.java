@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import jakarta.validation.constraints.*; import java.math.BigDecimal; import java.time.LocalDate; public record ContractRequest(String contractNumber,@NotBlank String contractType,@NotNull LocalDate startDate,LocalDate endDate,String positionTitle,String workloadType,BigDecimal weeklyHours,String status,String notes){}

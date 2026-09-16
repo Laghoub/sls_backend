@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import jakarta.validation.constraints.NotBlank; import java.time.LocalDate; public record QualificationRequest(String qualificationType,@NotBlank String title,String institution,String specialty,LocalDate obtainedDate,String description){}

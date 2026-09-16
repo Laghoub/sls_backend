@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.repository; import com.ecole.gestion_scolaire.hr.entity.StaffNote; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*;  public interface StaffNoteRepository extends JpaRepository<StaffNote,Long> { List<StaffNote> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId); }

@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.repository; import com.ecole.gestion_scolaire.hr.entity.CompensationPlan; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*;  public interface CompensationPlanRepository extends JpaRepository<CompensationPlan,Long> { List<CompensationPlan> findByEmployeeIdOrderByEffectiveFromDesc(Long employeeId); }

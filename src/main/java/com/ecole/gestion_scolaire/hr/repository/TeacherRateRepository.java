@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.repository; import com.ecole.gestion_scolaire.hr.entity.TeacherRate; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*;  public interface TeacherRateRepository extends JpaRepository<TeacherRate,Long> { List<TeacherRate> findByTeacherIdOrderByEffectiveFromDesc(Long teacherId); }

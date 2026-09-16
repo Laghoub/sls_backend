@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import com.ecole.gestion_scolaire.hr.enums.TeacherStatus; import java.util.List; public record TeacherResponse(Long id,Long employeeId,String employeeNumber,String firstName,String lastName,String positionTitle,TeacherStatus status,List<SubjectResponse> subjects){}

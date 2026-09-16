@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.attendance.dto; import jakarta.validation.Valid; import jakarta.validation.constraints.*; import java.time.LocalDate; import java.util.List; public record StudentAttendanceBatchRequest(@NotNull Long scheduleEntryId,@NotNull LocalDate date,@NotEmpty List<@Valid StudentAttendanceSaveRequest> attendances){}

@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import jakarta.validation.constraints.NotNull; import java.time.LocalDate; public record TeachingAssignmentRequest(@NotNull Long schoolYearId,@NotNull Long teacherId,@NotNull Long subjectId,@NotNull Long classGroupId,@NotNull LocalDate startDate,LocalDate endDate){}

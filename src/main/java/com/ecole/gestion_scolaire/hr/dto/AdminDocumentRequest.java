@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import com.ecole.gestion_scolaire.hr.enums.DocumentStatus; import jakarta.validation.constraints.NotBlank; import java.time.LocalDate; public record AdminDocumentRequest(@NotBlank String documentType,String documentNumber,LocalDate issuedOn,LocalDate expiresOn,String fileReference,DocumentStatus status,String notes){}

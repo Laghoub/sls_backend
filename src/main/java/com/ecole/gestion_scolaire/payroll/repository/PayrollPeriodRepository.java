@@ -1,0 +1,2 @@
+package com.ecole.gestion_scolaire.payroll.repository; import com.ecole.gestion_scolaire.payroll.entity.PayrollPeriod; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*;
+public interface PayrollPeriodRepository extends JpaRepository<PayrollPeriod,Long>{Optional<PayrollPeriod> findByYearAndMonth(Integer year,Integer month); List<PayrollPeriod> findAllByOrderByYearDescMonthDesc();}

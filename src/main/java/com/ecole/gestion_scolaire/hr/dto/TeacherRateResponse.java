@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import java.math.BigDecimal; import java.time.LocalDate; public record TeacherRateResponse(Long id,Long teacherId,Long schoolYearId,Long classGroupId,String classGroupName,Long subjectId,String subjectName,String workType,BigDecimal hourlyRate,LocalDate effectiveFrom,LocalDate effectiveUntil,boolean active){}

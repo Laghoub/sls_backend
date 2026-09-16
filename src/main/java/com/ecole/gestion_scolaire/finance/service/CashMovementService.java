@@ -71,6 +71,6 @@ public class CashMovementService {
     }
 
     public CashMovementResponse toResponse(CashMovement x) {
-        return new CashMovementResponse(x.getId(), x.getCashRegisterSessionId(), x.getMovementType(), x.getDirection(), x.getAmount(), x.getPaymentId(), x.getRefundId(), x.getReference(), x.getDescription(), x.getCreatedBy(), x.getCreatedAt());
+        return new CashMovementResponse(x.getId(), x.getCashRegisterSessionId(), x.getMovementType(), x.getDirection(), x.getAmount(), x.getPaymentId(), x.getRefundId(), x.getSalaryPaymentId(), x.getProviderPaymentId(), x.getReference(), x.getDescription(), x.getCreatedBy(), x.getCreatedAt());
     }
 }

@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import java.time.LocalDate; public record TeachingAssignmentResponse(Long id,Long schoolYearId,String schoolYear,Long teacherId,String teacherName,Long subjectId,String subjectName,Long classGroupId,String classGroupName,LocalDate startDate,LocalDate endDate,String status){}

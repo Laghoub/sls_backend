@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.hr.dto; import jakarta.validation.constraints.*; public record EmergencyContactRequest(@NotBlank String name,String relationship,@NotBlank String phone,String secondaryPhone,boolean primaryContact){}

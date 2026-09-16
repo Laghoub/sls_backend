@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.attendance.dto; import com.ecole.gestion_scolaire.attendance.enums.StudentAttendanceStatus; import jakarta.validation.constraints.*; public record StudentAttendanceSaveRequest(@NotNull Long studentId,@NotNull StudentAttendanceStatus status,@Min(0) Integer lateMinutes,String reason,boolean justified,String notes){}
