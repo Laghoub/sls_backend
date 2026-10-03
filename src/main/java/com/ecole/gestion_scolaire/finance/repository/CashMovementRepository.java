@@ -6,4 +6,5 @@ import org.springframework.data.domain.*;
 
 public interface CashMovementRepository extends JpaRepository<CashMovement, Long> {
     Page<CashMovement> findByCashRegisterSessionId(Long id, Pageable p);
+    boolean existsBySalaryPaymentId(Long salaryPaymentId);
 }

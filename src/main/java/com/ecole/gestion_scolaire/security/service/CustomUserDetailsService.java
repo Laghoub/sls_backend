@@ -6,9 +6,11 @@ import com.ecole.gestion_scolaire.identity.entity.RolePermission;
 import com.ecole.gestion_scolaire.identity.entity.UserAccount;
 import com.ecole.gestion_scolaire.identity.entity.UserRole;
 import com.ecole.gestion_scolaire.identity.entity.UserAccountStatus;
+import com.ecole.gestion_scolaire.identity.entity.UserPermissionOverride;
 import com.ecole.gestion_scolaire.identity.repository.RolePermissionRepository;
 import com.ecole.gestion_scolaire.identity.repository.UserAccountRepository;
 import com.ecole.gestion_scolaire.identity.repository.UserRoleRepository;
+import com.ecole.gestion_scolaire.identity.repository.UserPermissionOverrideRepository;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -28,15 +30,18 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserAccountRepository userAccountRepository;
     private final UserRoleRepository userRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final UserPermissionOverrideRepository userPermissionOverrideRepository;
 
     public CustomUserDetailsService(
             UserAccountRepository userAccountRepository,
             UserRoleRepository userRoleRepository,
-            RolePermissionRepository rolePermissionRepository
+            RolePermissionRepository rolePermissionRepository,
+            UserPermissionOverrideRepository userPermissionOverrideRepository
     ) {
         this.userAccountRepository = userAccountRepository;
         this.userRoleRepository = userRoleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.userPermissionOverrideRepository = userPermissionOverrideRepository;
     }
 
     @Override
@@ -130,6 +135,20 @@ public class CustomUserDetailsService implements UserDetailsService {
                                 permission.getCode()
                         )
                 );
+            }
+        }
+
+        // Les exceptions individuelles sont appliquées en dernier : DENY retire
+        // une permission héritée des profils, GRANT l'ajoute.
+        for (UserPermissionOverride override :
+                userPermissionOverrideRepository.findByUserAccountId(userAccount.getId())) {
+            Permission permission = override.getPermission();
+            if (!permission.isActive()) continue;
+            SimpleGrantedAuthority authority = new SimpleGrantedAuthority(permission.getCode());
+            if ("DENY".equalsIgnoreCase(override.getEffect())) {
+                authorities.remove(authority);
+            } else if ("GRANT".equalsIgnoreCase(override.getEffect())) {
+                authorities.add(authority);
             }
         }
 

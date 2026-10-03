@@ -39,6 +39,7 @@ spring:
 
 
 app:
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:4200}
   bootstrap-admin:
     enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
     username: ${APP_BOOTSTRAP_ADMIN_USERNAME:}

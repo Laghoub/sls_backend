@@ -8,7 +8,8 @@ import java.time.*;
 @Table(name="student_discount")
 public class StudentDiscount {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
- @Column(name="student_enrollment_id",nullable=false) private Long studentEnrollmentId;
+ @Column(name="student_enrollment_id") private Long studentEnrollmentId;
+ @Column(name="registration_case_id") private Long registrationCaseId;
  @Column(name="discount_rule_id") private Long discountRuleId;
  @Column(name="fee_type_id") private Long feeTypeId;
  @Column(name="discount_type",nullable=false,length=30) private String discountType;
@@ -23,6 +24,7 @@ public class StudentDiscount {
  @Column(name="rejection_reason") private String rejectionReason; @Column(name="applied_at") private OffsetDateTime appliedAt;
  @PrePersist void pre(){if(createdAt==null)createdAt=OffsetDateTime.now();}
  public Long getId(){return id;} public Long getStudentEnrollmentId(){return studentEnrollmentId;} public void setStudentEnrollmentId(Long v){studentEnrollmentId=v;}
+ public Long getRegistrationCaseId(){return registrationCaseId;} public void setRegistrationCaseId(Long v){registrationCaseId=v;}
  public Long getDiscountRuleId(){return discountRuleId;} public void setDiscountRuleId(Long v){discountRuleId=v;} public Long getFeeTypeId(){return feeTypeId;} public void setFeeTypeId(Long v){feeTypeId=v;}
  public String getDiscountType(){return discountType;} public void setDiscountType(String v){discountType=v;} public BigDecimal getValue(){return value;} public void setValue(BigDecimal v){value=v;}
  public LocalDate getStartDate(){return startDate;} public void setStartDate(LocalDate v){startDate=v;} public LocalDate getEndDate(){return endDate;} public void setEndDate(LocalDate v){endDate=v;}

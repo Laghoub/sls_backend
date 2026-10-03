@@ -12,4 +12,6 @@ public interface UserRoleRepository
     List<UserRole> findByUserAccountId(Long userAccountId);
 
     List<UserRole> findByRoleId(Long roleId);
+
+    boolean existsByUserAccountIdAndRoleId(Long userAccountId, Long roleId);
 }

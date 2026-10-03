@@ -22,8 +22,8 @@ import java.util.*;
 public class PayrollService {
  private static final BigDecimal ZERO=BigDecimal.ZERO.setScale(2); private static final DateTimeFormatter TIME=DateTimeFormatter.ofPattern("HH'h'mm");
  private final PayrollPeriodRepository periods; private final PayrollRepository payrolls; private final SalaryPaymentRepository payments; private final PayslipRepository payslips;
- private final TeacherRepository teachers; private final CompensationPlanRepository plans; private final TeacherRateRepository rates; private final SchoolYearRepository years; private final PaymentMethodRepository paymentMethods; private final CashRegisterSessionRepository cashSessions; private final CashMovementRepository cashMovements; private final PayrollCurrentUserService current; private final PayrollEmailService emails; private final EntityManager em;
- public PayrollService(PayrollPeriodRepository periods,PayrollRepository payrolls,SalaryPaymentRepository payments,PayslipRepository payslips,TeacherRepository teachers,CompensationPlanRepository plans,TeacherRateRepository rates,SchoolYearRepository years,PaymentMethodRepository paymentMethods,CashRegisterSessionRepository cashSessions,CashMovementRepository cashMovements,PayrollCurrentUserService current,PayrollEmailService emails,EntityManager em){this.periods=periods;this.payrolls=payrolls;this.payments=payments;this.payslips=payslips;this.teachers=teachers;this.plans=plans;this.rates=rates;this.years=years;this.paymentMethods=paymentMethods;this.cashSessions=cashSessions;this.cashMovements=cashMovements;this.current=current;this.emails=emails;this.em=em;}
+ private final TeacherRepository teachers; private final CompensationPlanRepository plans; private final TeacherRateRepository rates; private final SchoolYearRepository years; private final PaymentMethodRepository paymentMethods; private final CashRegisterSessionRepository cashSessions; private final com.ecole.gestion_scolaire.finance.service.CashMovementService cashMovementService; private final PayrollCurrentUserService current; private final PayrollEmailService emails; private final EntityManager em;
+ public PayrollService(PayrollPeriodRepository periods,PayrollRepository payrolls,SalaryPaymentRepository payments,PayslipRepository payslips,TeacherRepository teachers,CompensationPlanRepository plans,TeacherRateRepository rates,SchoolYearRepository years,PaymentMethodRepository paymentMethods,CashRegisterSessionRepository cashSessions,com.ecole.gestion_scolaire.finance.service.CashMovementService cashMovementService,PayrollCurrentUserService current,PayrollEmailService emails,EntityManager em){this.periods=periods;this.payrolls=payrolls;this.payments=payments;this.payslips=payslips;this.teachers=teachers;this.plans=plans;this.rates=rates;this.years=years;this.paymentMethods=paymentMethods;this.cashSessions=cashSessions;this.cashMovementService=cashMovementService;this.current=current;this.emails=emails;this.em=em;}
 
  public PayrollResponse calculate(PayrollCalculateRequest q){
   var teacher=teachers.findById(q.teacherId()).orElseThrow(()->new ResourceNotFoundException("Enseignant introuvable")); var employee=teacher.getEmployee(); var year=years.findById(q.schoolYearId()).orElseThrow(()->new ResourceNotFoundException("Année scolaire introuvable"));
@@ -69,9 +69,21 @@ public class PayrollService {
   var p=payrolls.findById(payrollId).orElseThrow(()->new ResourceNotFoundException("Paie introuvable")); if("CANCELLED".equals(p.getStatus()))throw new BusinessRuleException("Cette paie est annulée.");
   BigDecimal already=paid(p.getId()), remaining=p.getNetSalary().subtract(already); if(remaining.signum()<=0)throw new BusinessRuleException("Cette paie est déjà intégralement réglée."); if(q.amount().compareTo(remaining)>0)throw new BusinessRuleException("Le montant dépasse le reste à payer : "+remaining+".");
   var method=paymentMethods.findById(q.paymentMethodId()).orElseThrow(()->new ResourceNotFoundException("Mode de paiement introuvable"));if(!method.isActive())throw new BusinessRuleException("Ce mode de paiement est inactif.");
-  boolean cash="ESPECES".equalsIgnoreCase(method.getCode())||"CASH".equalsIgnoreCase(method.getCode()); Long sessionId=q.cashRegisterSessionId(); if(cash){if(sessionId==null)throw new BusinessRuleException("Une session de caisse ouverte est obligatoire pour un paiement en espèces.");var s=cashSessions.findById(sessionId).orElseThrow(()->new ResourceNotFoundException("Session de caisse introuvable"));if(!"OPEN".equalsIgnoreCase(s.getStatus()))throw new BusinessRuleException("La session de caisse n’est pas ouverte.");}
-  var user=current.get();var sp=new SalaryPayment();sp.setPayroll(p);sp.setAmount(money(q.amount()));sp.setPaymentMethod(method);sp.setCashRegisterSessionId(sessionId);sp.setReference(blank(q.reference()));sp.setStatus("VALIDATED");sp.setPaidBy(user.getId());sp=payments.save(sp);
-  if(cash){var m=new CashMovement();m.setCashRegisterSessionId(sessionId);m.setMovementType("SALARY_PAYMENT");m.setDirection("OUT");m.setAmount(sp.getAmount());m.setSalaryPaymentId(sp.getId());m.setReference(sp.getReference());m.setDescription("Paiement salaire - "+p.getEmployee().getEmployeeNumber());m.setCreatedBy(user.getId());cashMovements.save(m);}
+  var user=current.get();
+  boolean cash=isCashMethod(method);
+  Long sessionId=q.cashRegisterSessionId();
+  if(cash){
+   if(sessionId==null){
+    sessionId=cashSessions.findFirstByCashierIdAndStatusOrderByOpenedAtDesc(user.getId(),"OPEN")
+      .map(CashRegisterSession::getId)
+      .orElseThrow(()->new BusinessRuleException("Une session de caisse ouverte est obligatoire pour un paiement en espèces."));
+   }
+   var session=cashSessions.findById(sessionId).orElseThrow(()->new ResourceNotFoundException("Session de caisse introuvable"));
+   if(!"OPEN".equalsIgnoreCase(session.getStatus()))throw new BusinessRuleException("La session de caisse n’est pas ouverte.");
+   if(!Objects.equals(session.getCashierId(),user.getId()))throw new BusinessRuleException("Cette session de caisse n’appartient pas à l’utilisateur connecté.");
+  }
+  var sp=new SalaryPayment();sp.setPayroll(p);sp.setAmount(money(q.amount()));sp.setPaymentMethod(method);sp.setCashRegisterSessionId(sessionId);sp.setReference(blank(q.reference()));sp.setStatus("VALIDATED");sp.setPaidBy(user.getId());sp=payments.saveAndFlush(sp);
+  if(cash){cashMovementService.salaryPayment(sessionId,sp.getId(),sp.getAmount(),sp.getReference(),p.getEmployee().getEmployeeNumber());}
   BigDecimal total=paid(p.getId());if(total.compareTo(p.getNetSalary())>=0){p.setStatus("PAID");p.setPaidAt(OffsetDateTime.now());}else p.setStatus("PARTIALLY_PAID");payrolls.save(p);
   var receipt=receipt(sp.getId());emails.queuePaymentReceipt(sp.getId());return receipt;
  }
@@ -88,5 +100,10 @@ public class PayrollService {
  private PayrollPeriodResponse mapPeriod(PayrollPeriod p){return new PayrollPeriodResponse(p.getId(),p.getSchoolYear()==null?null:p.getSchoolYear().getId(),p.getSchoolYear()==null?null:p.getSchoolYear().getLabel(),p.getYear(),p.getMonth(),p.getStartDate(),p.getEndDate(),p.getStatus());}
  private Payslip ensurePayslip(Payroll p){return payslips.findByPayrollId(p.getId()).orElseGet(()->{var x=new Payslip();x.setPayroll(p);x.setPayslipNumber("BUL-"+p.getPayrollPeriod().getYear()+String.format("%02d",p.getPayrollPeriod().getMonth())+"-"+p.getEmployee().getEmployeeNumber()+"-V"+p.getVersionNumber());x.setGeneratedBy(current.get().getId());x.setStatus("GENERATED");return payslips.save(x);});}
  private LocalDate asDate(Object v){if(v instanceof LocalDate d)return d;if(v instanceof java.sql.Date d)return d.toLocalDate();return LocalDate.parse(v.toString());} private LocalTime asTime(Object v){if(v instanceof LocalTime t)return t;if(v instanceof java.sql.Time t)return t.toLocalTime();return LocalTime.parse(v.toString());}
+ private boolean isCashMethod(PaymentMethod method){
+  String code=method.getCode()==null?"":java.text.Normalizer.normalize(method.getCode(),java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").replaceAll("[^A-Za-z]","").toUpperCase(Locale.ROOT);
+  String name=method.getName()==null?"":java.text.Normalizer.normalize(method.getName(),java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").replaceAll("[^A-Za-z]","").toUpperCase(Locale.ROOT);
+  return code.equals("CASH")||code.equals("ESPECE")||code.equals("ESPECES")||code.equals("LIQUIDE")||code.equals("LIQUIDES")||name.contains("ESPECE")||name.contains("CASH")||name.contains("LIQUIDE");
+ }
  private BigDecimal paid(Long payrollId){return payments.findByPayrollIdOrderByPaymentDateDesc(payrollId).stream().filter(x->"VALIDATED".equalsIgnoreCase(x.getStatus())).map(SalaryPayment::getAmount).reduce(BigDecimal.ZERO,BigDecimal::add).setScale(2,RoundingMode.HALF_UP);} private BigDecimal nvl(BigDecimal x){return x==null?BigDecimal.ZERO:x;} private BigDecimal money(BigDecimal x){return nvl(x).setScale(2,RoundingMode.HALF_UP);} private String blank(String s){return s==null||s.isBlank()?null:s.trim();}
 }

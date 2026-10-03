@@ -98,7 +98,8 @@ public class SecurityConfig {
                                 .csrfTokenRepository(csrfTokenRepository)
                                 .csrfTokenRequestHandler(csrfTokenRequestHandler)
                                 .ignoringRequestMatchers(
-                                        "/api/auth/login"
+                                        "/api/auth/login",
+                                        "/api/account-activation/public/**"
                                 )
                 )
 
@@ -125,7 +126,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth ->
                         auth
                                 .requestMatchers(
-                                        "/api/auth/login"
+                                        "/api/auth/login",
+                                        "/api/account-activation/public/**"
                                 )
                                 .permitAll()
 

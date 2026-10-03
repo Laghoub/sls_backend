@@ -1,0 +1,18 @@
+package com.ecole.gestion_scolaire.teacherportal.controller;
+import com.ecole.gestion_scolaire.teacherportal.dto.TeacherPortalDtos.*; import com.ecole.gestion_scolaire.teacherportal.service.TeacherPortalService; import com.ecole.gestion_scolaire.timetable.dto.ScheduleEntryResponse; import org.springframework.http.*; import org.springframework.security.access.prepost.PreAuthorize; import org.springframework.web.bind.annotation.*; import java.time.*; import java.util.*;
+@RestController @RequestMapping("/api/teacher-portal") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_ACCEDER')") public class TeacherPortalController { private final TeacherPortalService service; public TeacherPortalController(TeacherPortalService s){service=s;}
+ @GetMapping("/me") public Me me(){return service.me();} @GetMapping("/dashboard") public Dashboard dashboard(){return service.dashboard();}
+ @GetMapping("/assignments") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_CLASSES')") public List<Assignment> assignments(){return service.myAssignments();}
+ @GetMapping("/assignments/{id}/students") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_CLASSES')") public List<StudentItem> students(@PathVariable Long id){return service.students(id);}
+ @GetMapping("/timetable") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EMPLOI_DU_TEMPS')") public List<ScheduleEntryResponse> timetable(@RequestParam Long schoolYearId){return service.timetable(schoolYearId);}
+ @GetMapping("/attendance") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_ASSIDUITE')") public List<Attendance> attendance(@RequestParam(required=false) LocalDate from,@RequestParam(required=false) LocalDate to){return service.attendance(from,to);}
+ @GetMapping("/payroll") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_REMUNERATION')") public List<PayrollItem> payroll(){return service.payroll();}
+ @GetMapping("/exercises") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EXERCICES')") public List<Exercise> exercises(){return service.exercises();}
+ @PostMapping("/exercises") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EXERCICES')") public ResponseEntity<Exercise> createExercise(@RequestBody ExerciseRequest r){return ResponseEntity.status(201).body(service.saveExercise(null,r));}
+ @PutMapping("/exercises/{id}") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EXERCICES')") public Exercise updateExercise(@PathVariable Long id,@RequestBody ExerciseRequest r){return service.saveExercise(id,r);} @DeleteMapping("/exercises/{id}") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EXERCICES')") public ResponseEntity<Void> deleteExercise(@PathVariable Long id){service.deleteExercise(id);return ResponseEntity.noContent().build();}
+ @GetMapping("/evaluations") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EVALUATIONS')") public List<Evaluation> evaluations(){return service.evaluations();}
+ @PostMapping("/evaluations") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EVALUATIONS')") public ResponseEntity<Evaluation> createEvaluation(@RequestBody EvaluationRequest r){return ResponseEntity.status(201).body(service.saveEvaluation(null,r));}
+ @PutMapping("/evaluations/{id}") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EVALUATIONS')") public Evaluation updateEvaluation(@PathVariable Long id,@RequestBody EvaluationRequest r){return service.saveEvaluation(id,r);}
+ @GetMapping("/evaluations/{id}/grades") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EVALUATIONS')") public List<Grade> grades(@PathVariable Long id){return service.grades(id);}
+ @PutMapping("/evaluations/{id}/grades") @PreAuthorize("hasAuthority('PORTAIL_ENSEIGNANT_EVALUATIONS')") public List<Grade> saveGrades(@PathVariable Long id,@RequestBody List<GradeRequest> r){return service.saveGrades(id,r);}
+}

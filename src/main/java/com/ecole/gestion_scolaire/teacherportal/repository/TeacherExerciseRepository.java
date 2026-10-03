@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.teacherportal.repository; import com.ecole.gestion_scolaire.teacherportal.entity.TeacherExercise; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface TeacherExerciseRepository extends JpaRepository<TeacherExercise,Long>{List<TeacherExercise> findByTeacherIdOrderByDueDateDescIdDesc(Long teacherId);}

@@ -7,6 +7,9 @@ import com.ecole.gestion_scolaire.identity.repository.*;
 import com.ecole.gestion_scolaire.school.repository.*;
 import com.ecole.gestion_scolaire.common.exception.*;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.ecole.gestion_scolaire.identity.entity.*;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
@@ -19,19 +22,31 @@ public class EmployeeService {
     private final UserAccountRepository users;
     private final EmployeeNumberGenerator numbers;
     private final JobPositionRepository positions;
+    private final TeacherRepository teachers;
+    private final RoleRepository roles;
+    private final UserRoleRepository userRoles;
+    private final PasswordEncoder passwordEncoder;
 
     public EmployeeService(EmployeeRepository repo,
                            PersonRepository persons,
                            CampusRepository campuses,
                            UserAccountRepository users,
                            EmployeeNumberGenerator numbers,
-                           JobPositionRepository positions) {
+                           JobPositionRepository positions,
+                           TeacherRepository teachers,
+                           RoleRepository roles,
+                           UserRoleRepository userRoles,
+                           PasswordEncoder passwordEncoder) {
         this.repo = repo;
         this.persons = persons;
         this.campuses = campuses;
         this.users = users;
         this.numbers = numbers;
         this.positions = positions;
+        this.teachers = teachers;
+        this.roles = roles;
+        this.userRoles = userRoles;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public EmployeeResponse create(EmployeeRequest q) {
@@ -58,6 +73,69 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public EmployeeResponse one(Long id) { return map(get(id)); }
+
+
+    public EmployeeAccountActivationResponse activateAccount(Long employeeId) {
+        var employee = get(employeeId);
+        var person = employee.getPerson();
+        if (users.findByPersonId(person.getId()).isPresent())
+            throw new BusinessRuleException("Un compte utilisateur existe déjà pour cet employé.");
+
+        String username = uniqueUsername(employee.getEmployeeNumber());
+        String temporaryPassword = generateTemporaryPassword();
+        String roleCode = teachers.findByEmployeeId(employeeId).isPresent() ? "ENSEIGNANT" : "STAFF_ADMINISTRATIF";
+        var role = roles.findByCode(roleCode)
+                .orElseThrow(() -> new BusinessRuleException("Rôle " + roleCode + " introuvable."));
+
+        var account = new UserAccount();
+        account.setPerson(person);
+        account.setUsername(username);
+        account.setPasswordHash(passwordEncoder.encode(temporaryPassword));
+        account.setStatus(UserAccountStatus.ACTIVE);
+        account.setMustChangePassword(true);
+        account.setFailedLoginAttempts(0);
+        account = users.save(account);
+
+        var link = new UserRole();
+        link.setId(new UserRoleId(account.getId(), role.getId()));
+        link.setUserAccount(account);
+        link.setRole(role);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            users.findByUsername(auth.getName()).ifPresent(link::setAssignedBy);
+        }
+        userRoles.save(link);
+
+        return new EmployeeAccountActivationResponse(employeeId, account.getId(), username,
+                temporaryPassword, roleCode, true);
+    }
+
+    private String uniqueUsername(String employeeNumber) {
+        String base = employeeNumber == null || employeeNumber.isBlank() ? "EMP" : employeeNumber.trim().toUpperCase(Locale.ROOT);
+        String candidate = base;
+        int suffix = 2;
+        while (users.existsByUsername(candidate)) candidate = base + "-" + suffix++;
+        return candidate;
+    }
+
+    private String generateTemporaryPassword() {
+        String upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String lower = "abcdefghijkmnopqrstuvwxyz";
+        String digits = "23456789";
+        String symbols = "@#$%";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        String all = upper + lower + digits + symbols;
+        List<Character> chars = new ArrayList<>();
+        chars.add(upper.charAt(random.nextInt(upper.length())));
+        chars.add(lower.charAt(random.nextInt(lower.length())));
+        chars.add(digits.charAt(random.nextInt(digits.length())));
+        chars.add(symbols.charAt(random.nextInt(symbols.length())));
+        for (int i = 4; i < 12; i++) chars.add(all.charAt(random.nextInt(all.length())));
+        Collections.shuffle(chars, random);
+        StringBuilder out = new StringBuilder();
+        chars.forEach(out::append);
+        return out.toString();
+    }
 
     public void changeStatus(Long id, com.ecole.gestion_scolaire.hr.enums.EmploymentStatus status) {
         var e = get(id);

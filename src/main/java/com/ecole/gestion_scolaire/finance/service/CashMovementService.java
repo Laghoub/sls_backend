@@ -70,6 +70,26 @@ public class CashMovementService {
         repo.save(x);
     }
 
+    @Transactional
+    public void salaryPayment(Long sessionId, Long salaryPaymentId, java.math.BigDecimal amount, String ref, String employeeNumber) {
+        var session = sessions.findById(sessionId)
+                .orElseThrow(() -> new FinanceNotFoundException("Session de caisse introuvable."));
+        if (!"OPEN".equalsIgnoreCase(session.getStatus()))
+            throw new FinanceBusinessException("La session de caisse est fermée.");
+        if (repo.existsBySalaryPaymentId(salaryPaymentId)) return;
+
+        var x = new CashMovement();
+        x.setCashRegisterSessionId(sessionId);
+        x.setMovementType("SALARY_PAYMENT");
+        x.setDirection("OUT");
+        x.setAmount(amount);
+        x.setSalaryPaymentId(salaryPaymentId);
+        x.setReference(ref);
+        x.setDescription("Paiement enseignant - " + employeeNumber);
+        x.setCreatedBy(current.id());
+        repo.saveAndFlush(x);
+    }
+
     public CashMovementResponse toResponse(CashMovement x) {
         return new CashMovementResponse(x.getId(), x.getCashRegisterSessionId(), x.getMovementType(), x.getDirection(), x.getAmount(), x.getPaymentId(), x.getRefundId(), x.getSalaryPaymentId(), x.getProviderPaymentId(), x.getReference(), x.getDescription(), x.getCreatedBy(), x.getCreatedAt());
     }
