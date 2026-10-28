@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.transport.repository; import com.ecole.gestion_scolaire.transport.entity.TransportStop; import org.springframework.data.jpa.repository.JpaRepository; public interface TransportStopRepository extends JpaRepository<TransportStop,Long> {}

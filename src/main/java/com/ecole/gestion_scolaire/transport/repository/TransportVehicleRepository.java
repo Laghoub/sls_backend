@@ -1,0 +1,1 @@
+package com.ecole.gestion_scolaire.transport.repository; import com.ecole.gestion_scolaire.transport.entity.TransportVehicle; import org.springframework.data.jpa.repository.JpaRepository; public interface TransportVehicleRepository extends JpaRepository<TransportVehicle,Long> {}

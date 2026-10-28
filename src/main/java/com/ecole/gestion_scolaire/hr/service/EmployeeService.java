@@ -1,6 +1,8 @@
 package com.ecole.gestion_scolaire.hr.service;
 
 import com.ecole.gestion_scolaire.hr.dto.*;
+import com.ecole.gestion_scolaire.accountactivation.dto.ActivationDtos;
+import com.ecole.gestion_scolaire.accountactivation.service.AccountActivationService;
 import com.ecole.gestion_scolaire.hr.entity.*;
 import com.ecole.gestion_scolaire.hr.repository.*;
 import com.ecole.gestion_scolaire.identity.repository.*;
@@ -26,6 +28,7 @@ public class EmployeeService {
     private final RoleRepository roles;
     private final UserRoleRepository userRoles;
     private final PasswordEncoder passwordEncoder;
+    private final AccountActivationService accountActivationService;
 
     public EmployeeService(EmployeeRepository repo,
                            PersonRepository persons,
@@ -36,7 +39,8 @@ public class EmployeeService {
                            TeacherRepository teachers,
                            RoleRepository roles,
                            UserRoleRepository userRoles,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           AccountActivationService accountActivationService) {
         this.repo = repo;
         this.persons = persons;
         this.campuses = campuses;
@@ -47,6 +51,7 @@ public class EmployeeService {
         this.roles = roles;
         this.userRoles = userRoles;
         this.passwordEncoder = passwordEncoder;
+        this.accountActivationService = accountActivationService;
     }
 
     public EmployeeResponse create(EmployeeRequest q) {
@@ -75,39 +80,32 @@ public class EmployeeService {
     public EmployeeResponse one(Long id) { return map(get(id)); }
 
 
-    public EmployeeAccountActivationResponse activateAccount(Long employeeId) {
+    public ActivationDtos.ActivateResponse activateAccount(Long employeeId) {
         var employee = get(employeeId);
         var person = employee.getPerson();
-        if (users.findByPersonId(person.getId()).isPresent())
-            throw new BusinessRuleException("Un compte utilisateur existe déjà pour cet employé.");
-
-        String username = uniqueUsername(employee.getEmployeeNumber());
-        String temporaryPassword = generateTemporaryPassword();
-        String roleCode = teachers.findByEmployeeId(employeeId).isPresent() ? "ENSEIGNANT" : "STAFF_ADMINISTRATIF";
-        var role = roles.findByCode(roleCode)
-                .orElseThrow(() -> new BusinessRuleException("Rôle " + roleCode + " introuvable."));
-
-        var account = new UserAccount();
-        account.setPerson(person);
-        account.setUsername(username);
-        account.setPasswordHash(passwordEncoder.encode(temporaryPassword));
-        account.setStatus(UserAccountStatus.ACTIVE);
-        account.setMustChangePassword(true);
-        account.setFailedLoginAttempts(0);
-        account = users.save(account);
-
-        var link = new UserRole();
-        link.setId(new UserRoleId(account.getId(), role.getId()));
-        link.setUserAccount(account);
-        link.setRole(role);
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()) {
-            users.findByUsername(auth.getName()).ifPresent(link::setAssignedBy);
+        if (person.getEmail() == null || person.getEmail().isBlank()) {
+            throw new BusinessRuleException("Une adresse e-mail est obligatoire avant l'envoi du lien d'activation.");
         }
-        userRoles.save(link);
+        String roleCode = resolveAccountRole(employee);
+        return accountActivationService.activate(
+                new ActivationDtos.ActivateRequest(person.getId(), employee.getEmployeeNumber(), roleCode)
+        );
+    }
 
-        return new EmployeeAccountActivationResponse(employeeId, account.getId(), username,
-                temporaryPassword, roleCode, true);
+    /** Utilise le code stable du référentiel des postes, jamais son libellé. */
+    private String resolveAccountRole(Employee employee) {
+        if (teachers.findByEmployeeId(employee.getId()).isPresent()) return "ENSEIGNANT";
+        String code = employee.getPosition() == null ? null : employee.getPosition().getCode();
+        if (code != null) {
+            switch (code.trim().toUpperCase(Locale.ROOT)) {
+                case "SURVEILLANT_GENERAL": return "SURVEILLANT_GENERAL";
+                case "SURVEILLANT_PRIMAIRE": return "SURVEILLANT_PRIMAIRE";
+                case "SURVEILLANT_COLLEGE": return "SURVEILLANT_COLLEGE";
+                case "SURVEILLANT_LYCEE": return "SURVEILLANT_LYCEE";
+                default: break;
+            }
+        }
+        return "STAFF_ADMINISTRATIF";
     }
 
     private String uniqueUsername(String employeeNumber) {

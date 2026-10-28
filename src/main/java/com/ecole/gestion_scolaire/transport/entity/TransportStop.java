@@ -1,0 +1,3 @@
+package com.ecole.gestion_scolaire.transport.entity;
+import jakarta.persistence.*; import java.time.*; import java.math.*;
+@Entity @Table(name="transport_stop") public class TransportStop { @Id @GeneratedValue(strategy=GenerationType.IDENTITY) public Long id; @Column(name="route_id") public Long routeId; public String name; @Column(name="stop_order") public Integer stopOrder; @Column(name="morning_time") public LocalTime morningTime; @Column(name="return_time") public LocalTime returnTime; public String address; @Column(precision=10,scale=7) public BigDecimal latitude; @Column(precision=10,scale=7) public BigDecimal longitude; public boolean active=true; }

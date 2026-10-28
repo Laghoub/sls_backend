@@ -23,6 +23,7 @@ import java.util.*;
 @Service
 @Transactional
 public class TimetableService {
+    private final com.ecole.gestion_scolaire.identity.service.SurveillantCycleScope cycleScope;
     private final ScheduleEntryRepository schedules;
     private final TeachingAssignmentRepository assignments;
     private final TimeSlotRepository timeSlots;
@@ -33,7 +34,8 @@ public class TimetableService {
                             TeachingAssignmentRepository assignments,
                             TimeSlotRepository timeSlots,
                             RoomRepository rooms,
-                            ClassGroupRepository classes) {
+                            ClassGroupRepository classes, com.ecole.gestion_scolaire.identity.service.SurveillantCycleScope cycleScope) {
+        this.cycleScope = cycleScope;
         this.schedules = schedules;
         this.assignments = assignments;
         this.timeSlots = timeSlots;
@@ -50,6 +52,7 @@ public class TimetableService {
     public ScheduleEntryResponse update(Long id, ScheduleEntryRequest request) {
         var entry = schedules.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Créneau d'emploi du temps introuvable"));
+        assertEntryCycle(entry);
         apply(entry, request, id);
         return map(schedules.save(entry));
     }
@@ -57,12 +60,14 @@ public class TimetableService {
     public void deactivate(Long id) {
         var entry = schedules.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Créneau d'emploi du temps introuvable"));
+        assertEntryCycle(entry);
         entry.setStatus(ScheduleEntryStatus.INACTIVE);
         schedules.save(entry);
     }
 
     @Transactional(readOnly = true)
     public List<ScheduleEntryResponse> byClass(Long schoolYearId, Long classGroupId) {
+        assertClassCycle(classGroupId);
         ensureClassYear(classGroupId, schoolYearId);
         return schedules.findClassSchedule(schoolYearId, classGroupId, ScheduleEntryStatus.ACTIVE)
                 .stream().map(this::map).toList();
@@ -71,11 +76,12 @@ public class TimetableService {
     @Transactional(readOnly = true)
     public List<ScheduleEntryResponse> byTeacher(Long schoolYearId, Long teacherId) {
         return schedules.findTeacherSchedule(schoolYearId, teacherId, ScheduleEntryStatus.ACTIVE)
-                .stream().map(this::map).toList();
+                .stream().filter(this::inScope).map(this::map).toList();
     }
 
     @Transactional(readOnly = true)
     public List<EligibleAssignmentResponse> eligibleAssignments(Long schoolYearId, Long classGroupId) {
+        assertClassCycle(classGroupId);
         ensureClassYear(classGroupId, schoolYearId);
         return assignments.findBySchoolYearIdAndClassGroupIdAndStatus(schoolYearId, classGroupId, AssignmentStatus.ACTIVE)
                 .stream().map(a -> {
@@ -88,6 +94,7 @@ public class TimetableService {
     }
 
     public List<ScheduleEntryResponse> replaceClassGrid(TimetableGridSaveRequest request) {
+        assertClassCycle(request.classGroupId());
         ensureClassYear(request.classGroupId(), request.schoolYearId());
 
         // Validation complète avant de toucher aux anciennes lignes.
@@ -109,9 +116,13 @@ public class TimetableService {
         return schedules.saveAll(prepared).stream().map(this::map).toList();
     }
 
+    private boolean inScope(ScheduleEntry entry) {String cycle=cycleScope.restrictedCycle();return cycle==null || cycle.equalsIgnoreCase(entry.getTeachingAssignment().getClassGroup().getLevel().getCycle().getCode());}
+    private void assertEntryCycle(ScheduleEntry entry){if(!inScope(entry))throw new org.springframework.security.access.AccessDeniedException("Emploi du temps hors du cycle autorisé");}
+    private void assertClassCycle(Long classId){if(cycleScope.restrictedCycle()!=null){var c=classes.findById(classId).orElseThrow(()->new ResourceNotFoundException("Classe introuvable"));cycleScope.assertCycle(c.getLevel().getCycle().getCode());}}
     private void apply(ScheduleEntry entry, ScheduleEntryRequest request, Long currentId) {
         validateDates(request.validFrom(), request.validUntil());
         var assignment = getAssignment(request.teachingAssignmentId());
+        assertClassCycle(assignment.getClassGroup().getId());
         var slot = getSlot(request.timeSlotId());
         var room = getRoom(request.roomId());
         validateRoomCampus(assignment, room);
@@ -130,6 +141,7 @@ public class TimetableService {
                                                     Long schoolYearId, Long classGroupId) {
         validateDates(request.validFrom(), request.validUntil());
         var assignment = getAssignment(request.teachingAssignmentId());
+        assertClassCycle(assignment.getClassGroup().getId());
         if (!assignment.getSchoolYear().getId().equals(schoolYearId)
                 || !assignment.getClassGroup().getId().equals(classGroupId)) {
             throw new BusinessRuleException("Toutes les lignes doivent appartenir à la classe et à l'année scolaire sélectionnées.");

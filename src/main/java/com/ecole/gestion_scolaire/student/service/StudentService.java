@@ -23,6 +23,7 @@ import java.util.*;
 @Transactional(readOnly = true)
 public class StudentService {
     private final StudentRepository repo;
+    private final com.ecole.gestion_scolaire.identity.service.SurveillantCycleScope cycleScope;
     private final PersonRepository personRepo;
     private final PersonService personService;
 
@@ -32,8 +33,10 @@ public class StudentService {
             StudentRepository studentRepository,
             PersonRepository personRepository,
             PersonService personService,
-            StudentNumberGenerator studentNumberGenerator
+            StudentNumberGenerator studentNumberGenerator,
+            com.ecole.gestion_scolaire.identity.service.SurveillantCycleScope cycleScope
     ) {
+        this.cycleScope = cycleScope;
         this.repo = studentRepository;
         this.personRepo = personRepository;
         this.personService = personService;
@@ -41,7 +44,7 @@ public class StudentService {
     }
 
     public List<StudentResponse> findAll() {
-        return repo.findAllByOrderByStudentNumberAsc().stream().map(this::toResponse).toList();
+        return repo.findAllByOrderByStudentNumberAsc().stream().filter(s -> permitted(s.getId())).map(this::toResponse).toList();
     }
 
     public StudentResponse findById(Long id) {
@@ -85,11 +88,13 @@ public class StudentService {
     }
 
     public Student get(Long id) {
-        return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Élève introuvable : " + id));
+        Student student = repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Élève introuvable : " + id));
+        if (!permitted(id)) throw new org.springframework.security.access.AccessDeniedException("Élève hors du cycle autorisé");
+        return student;
     }
 
     private StudentResponse toResponse(Student s) {
-        return new StudentResponse(s.getId(), s.getPerson().getId(), s.getStudentNumber(), s.getInitialAdmissionDate(), s.getStatus(), s.getCreatedAt(), s.getUpdatedAt());
+        return new StudentResponse(s.getId(), s.getPerson().getId(), s.getStudentNumber(), s.getInitialAdmissionDate(), s.getStatus(), s.getCreatedAt(), s.getUpdatedAt(), s.getPerson().getFirstName(), s.getPerson().getLastName());
     }
 
     private String normalize(String v) {
@@ -197,14 +202,19 @@ public class StudentService {
 
 
         Page<StudentResponse> result =
-                repo.search(
-                        normalizedSearch,
-                        pageable
-                ).map(this::toResponse);
+                (cycleScope.restrictedCycle() == null
+                  ? repo.search(normalizedSearch, pageable)
+                  : repo.searchForCycle(normalizedSearch, cycleScope.restrictedCycle(), pageable))
+                .map(this::toResponse);
 
 
         return PageResponse.from(result);
     }
 
+
+    private boolean permitted(Long id) {
+        String cycle = cycleScope.restrictedCycle();
+        return cycle == null || repo.isStudentInCycle(id, cycle);
+    }
 
 }

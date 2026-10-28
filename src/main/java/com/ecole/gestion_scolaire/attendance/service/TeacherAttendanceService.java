@@ -1,5 +1,6 @@
 package com.ecole.gestion_scolaire.attendance.service;
 
+import com.ecole.gestion_scolaire.identity.service.SurveillantCycleScope;
 import com.ecole.gestion_scolaire.attendance.dto.*;
 import com.ecole.gestion_scolaire.attendance.entity.ClassSession;
 import com.ecole.gestion_scolaire.attendance.entity.TeacherAttendance;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class TeacherAttendanceService {
+ @org.springframework.beans.factory.annotation.Autowired private SurveillantCycleScope cycleScope;
     private final ScheduleEntryRepository schedules;
     private final ClassSessionRepository sessions;
     private final TeacherAttendanceRepository attendances;
@@ -56,7 +58,7 @@ public class TeacherAttendanceService {
         if (schoolDay == null) return List.of();
 
         var expected = schedules.findExpectedForAttendance(
-                schoolDay, timeSlotId, date, ScheduleEntryStatus.ACTIVE);
+                schoolDay, timeSlotId, date, ScheduleEntryStatus.ACTIVE).stream().filter(x -> cycleScope.restrictedCycle() == null || cycleScope.restrictedCycle().equalsIgnoreCase(x.getTeachingAssignment().getClassGroup().getLevel().getCycle().getCode())).toList();
 
         var scheduleIds = expected.stream().map(ScheduleEntry::getId).toList();
         Map<Long, ClassSession> sessionBySchedule = new HashMap<>();
@@ -108,6 +110,7 @@ public class TeacherAttendanceService {
             }
             validateStatus(item);
             var schedule = getExpectedSchedule(item.scheduleEntryId(), item.date());
+            cycleScope.assertCycle(schedule.getTeachingAssignment().getClassGroup().getLevel().getCycle().getCode());
             var session = getOrCreateSession(schedule, item.date());
             var teacher = schedule.getTeachingAssignment().getTeacher();
 
@@ -140,6 +143,7 @@ public class TeacherAttendanceService {
 
     public TeacherAttendanceResponse validate(Long id) {
         var attendance = getAttendance(id);
+        cycleScope.assertCycle(attendance.getClassSession().getClassGroup().getLevel().getCycle().getCode());
         attendance.setValidationStatus(AttendanceValidationStatus.VALIDATED);
         attendance.setValidatedBy(currentUser());
         attendance.setValidatedAt(OffsetDateTime.now());
@@ -148,6 +152,7 @@ public class TeacherAttendanceService {
 
     public TeacherAttendanceResponse reject(Long id) {
         var attendance = getAttendance(id);
+        cycleScope.assertCycle(attendance.getClassSession().getClassGroup().getLevel().getCycle().getCode());
         attendance.setValidationStatus(AttendanceValidationStatus.REJECTED);
         attendance.setValidatedBy(currentUser());
         attendance.setValidatedAt(OffsetDateTime.now());
@@ -156,6 +161,7 @@ public class TeacherAttendanceService {
 
     public TeacherAttendanceResponse reopen(Long id) {
         var attendance = getAttendance(id);
+        cycleScope.assertCycle(attendance.getClassSession().getClassGroup().getLevel().getCycle().getCode());
         attendance.setValidationStatus(AttendanceValidationStatus.PENDING);
         attendance.setValidatedBy(null);
         attendance.setValidatedAt(null);
@@ -177,8 +183,10 @@ public class TeacherAttendanceService {
             if (from != null) predicates.add(cb.greaterThanOrEqualTo(session.get("sessionDate"), from));
             if (to != null) predicates.add(cb.lessThanOrEqualTo(session.get("sessionDate"), to));
             if (teacherId != null) predicates.add(cb.equal(root.get("teacher").get("id"), teacherId));
+            if(cycleScope.restrictedCycle()!=null) predicates.add(cb.equal(session.get("classGroup").get("level").get("cycle").get("code"),cycleScope.restrictedCycle()));
             if (status != null) predicates.add(cb.equal(root.get("attendanceStatus"), status));
             if (validationStatus != null) predicates.add(cb.equal(root.get("validationStatus"), validationStatus));
+            if(cycleScope.restrictedCycle()!=null) predicates.add(cb.equal(session.get("classGroup").get("level").get("cycle").get("code"),cycleScope.restrictedCycle()));
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
 
@@ -194,6 +202,7 @@ public class TeacherAttendanceService {
             if (from != null) predicates.add(cb.greaterThanOrEqualTo(session.get("sessionDate"), from));
             if (to != null) predicates.add(cb.lessThanOrEqualTo(session.get("sessionDate"), to));
             if (teacherId != null) predicates.add(cb.equal(root.get("teacher").get("id"), teacherId));
+            if(cycleScope.restrictedCycle()!=null) predicates.add(cb.equal(session.get("classGroup").get("level").get("cycle").get("code"),cycleScope.restrictedCycle()));
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
         var list = attendances.findAll(spec);

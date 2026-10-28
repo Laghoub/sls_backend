@@ -23,6 +23,7 @@ import java.util.List;
 public class ClassGroupService {
 
     private final ClassGroupRepository classGroupRepository;
+    private final com.ecole.gestion_scolaire.identity.service.SurveillantCycleScope cycleScope;
     private final SchoolYearRepository schoolYearRepository;
     private final LevelRepository levelRepository;
     private final CampusRepository campusRepository;
@@ -31,8 +32,10 @@ public class ClassGroupService {
             ClassGroupRepository classGroupRepository,
             SchoolYearRepository schoolYearRepository,
             LevelRepository levelRepository,
-            CampusRepository campusRepository
+            CampusRepository campusRepository,
+            com.ecole.gestion_scolaire.identity.service.SurveillantCycleScope cycleScope
     ) {
+        this.cycleScope = cycleScope;
         this.classGroupRepository = classGroupRepository;
         this.schoolYearRepository = schoolYearRepository;
         this.levelRepository = levelRepository;
@@ -57,6 +60,7 @@ public class ClassGroupService {
                         schoolYearId
                 )
                 .stream()
+                .filter(this::permitted)
                 .map(this::toResponse)
                 .toList();
     }
@@ -75,6 +79,7 @@ public class ClassGroupService {
                         levelId
                 )
                 .stream()
+                .filter(this::permitted)
                 .map(this::toResponse)
                 .toList();
     }
@@ -93,6 +98,7 @@ public class ClassGroupService {
                         campusId
                 )
                 .stream()
+                .filter(this::permitted)
                 .map(this::toResponse)
                 .toList();
     }
@@ -114,6 +120,7 @@ public class ClassGroupService {
                         campusId
                 )
                 .stream()
+                .filter(this::permitted)
                 .map(this::toResponse)
                 .toList();
     }
@@ -237,14 +244,9 @@ public class ClassGroupService {
             Long id
     ) {
 
-        return classGroupRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Classe introuvable avec l'identifiant : "
-                                        + id
-                        )
-                );
+        ClassGroup cg = classGroupRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Classe introuvable : " + id));
+        if (!permitted(cg)) throw new org.springframework.security.access.AccessDeniedException("Classe hors du cycle autorisé");
+        return cg;
     }
 
     private SchoolYear getSchoolYearById(
@@ -320,6 +322,7 @@ public class ClassGroupService {
         return classGroupRepository
                 .findAll()
                 .stream()
+                .filter(this::permitted)
                 .map(this::toResponse)
                 .toList();
     }
@@ -422,4 +425,9 @@ public class ClassGroupService {
                 classGroup.getCreatedAt()
         );
     }
+    private boolean permitted(ClassGroup cg) {
+        String cycle = cycleScope.restrictedCycle();
+        return cycle == null || cycle.equalsIgnoreCase(cg.getLevel().getCycle().getCode());
+    }
+
 }
