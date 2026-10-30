@@ -7,5 +7,16 @@ import com.ecole.gestion_scolaire.payroll.dto.*; import com.ecole.gestion_scolai
  @GetMapping @PreAuthorize("hasAuthority('PAIE_ENSEIGNANT_CONSULTER')") public List<PayrollResponse> list(@RequestParam Long periodId){return service.list(periodId);}
  @GetMapping("/periods") @PreAuthorize("hasAuthority('PAIE_ENSEIGNANT_CONSULTER')") public List<PayrollPeriodResponse> periods(){return service.periodList();}
  @PostMapping("/{payrollId}/payments") @PreAuthorize("hasAuthority('PAIE_ENSEIGNANT_PAYER')") public ResponseEntity<SalaryPaymentReceiptResponse> pay(@PathVariable Long payrollId,@Valid @RequestBody SalaryPaymentRequest q){return ResponseEntity.status(HttpStatus.CREATED).body(service.pay(payrollId,q));}
+ @GetMapping(value="/payments/{paymentId}/receipt.pdf",produces="application/pdf")
+ @PreAuthorize("hasAuthority('PAIE_ENSEIGNANT_CONSULTER')")
+ public ResponseEntity<byte[]> receiptPdf(@PathVariable Long paymentId) throws java.io.IOException {
+  var r=service.receipt(paymentId);
+  byte[] pdf=com.ecole.gestion_scolaire.payroll.service.SharedSalaryReceiptPdf.render(
+   "ENSEIGNANT",r.receiptNumber(),r.teacherName(),r.employeeNumber(),
+   String.format("%02d/%d",r.month(),r.year()),String.valueOf(r.paymentDate()),
+   r.paymentMethod(),r.paymentReference(),String.valueOf(r.netSalary()),
+   String.valueOf(r.paymentAmount()),String.valueOf(r.totalPaid()),String.valueOf(r.remainingAmount()));
+  return ResponseEntity.ok().header("Content-Disposition","inline; filename=teacher-receipt-"+paymentId+".pdf").body(pdf);
+ }
  @GetMapping("/payments/{paymentId}/receipt") @PreAuthorize("hasAuthority('PAIE_ENSEIGNANT_CONSULTER')") public SalaryPaymentReceiptResponse receipt(@PathVariable Long paymentId){return service.receipt(paymentId);}
 }

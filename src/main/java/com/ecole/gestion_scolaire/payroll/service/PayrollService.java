@@ -83,6 +83,7 @@ public class PayrollService {
    if(!Objects.equals(session.getCashierId(),user.getId()))throw new BusinessRuleException("Cette session de caisse n’appartient pas à l’utilisateur connecté.");
   }
   var sp=new SalaryPayment();sp.setPayroll(p);sp.setAmount(money(q.amount()));sp.setPaymentMethod(method);sp.setCashRegisterSessionId(sessionId);sp.setReference(blank(q.reference()));sp.setStatus("VALIDATED");sp.setPaidBy(user.getId());sp=payments.saveAndFlush(sp);
+  if(sp.getReference()==null){sp.setReference(String.format("ENS-%d-%08d",java.time.Year.now().getValue(),sp.getId()));sp=payments.saveAndFlush(sp);}
   if(cash){cashMovementService.salaryPayment(sessionId,sp.getId(),sp.getAmount(),sp.getReference(),p.getEmployee().getEmployeeNumber());}
   BigDecimal total=paid(p.getId());if(total.compareTo(p.getNetSalary())>=0){p.setStatus("PAID");p.setPaidAt(OffsetDateTime.now());}else p.setStatus("PARTIALLY_PAID");payrolls.save(p);
   var receipt=receipt(sp.getId());emails.queuePaymentReceipt(sp.getId());return receipt;
