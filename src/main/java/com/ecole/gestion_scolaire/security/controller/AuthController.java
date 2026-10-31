@@ -5,6 +5,7 @@ import com.ecole.gestion_scolaire.security.dto.ChangePasswordRequest;
 import com.ecole.gestion_scolaire.security.dto.LoginRequest;
 import com.ecole.gestion_scolaire.security.dto.LoginResponse;
 import com.ecole.gestion_scolaire.security.service.AuthService;
+import com.ecole.gestion_scolaire.security.service.CustomUserDetailsService;
 import com.ecole.gestion_scolaire.security.service.SecurityUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,15 +27,18 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
     private final AuthService authService;
+    private final CustomUserDetailsService userDetailsService;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             SecurityContextRepository securityContextRepository,
-            AuthService authService
+            AuthService authService,
+            CustomUserDetailsService userDetailsService
     ) {
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
         this.authService = authService;
+        this.userDetailsService = userDetailsService;
     }
 
     @PostMapping("/login")
@@ -96,17 +100,22 @@ public class AuthController {
         );
     }
 
+    /** Synchronise la session avec les permissions effectives actuelles. */
     @GetMapping("/me")
     public ResponseEntity<AuthUserResponse> me(
-            Authentication authentication
+            Authentication authentication,
+            HttpServletRequest request,
+            HttpServletResponse response
     ) {
-
-        SecurityUser securityUser =
-                (SecurityUser) authentication.getPrincipal();
-
-        return ResponseEntity.ok(
-                authService.buildResponse(securityUser)
-        );
+        SecurityUser current = (SecurityUser) authentication.getPrincipal();
+        SecurityUser refreshed = userDetailsService.reloadById(current.getId());
+        Authentication updated = new UsernamePasswordAuthenticationToken(
+                refreshed, null, refreshed.getAuthorities());
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(updated);
+        SecurityContextHolder.setContext(context);
+        securityContextRepository.saveContext(context, request, response);
+        return ResponseEntity.ok(authService.buildResponse(refreshed));
     }
 
     @PostMapping("/logout")

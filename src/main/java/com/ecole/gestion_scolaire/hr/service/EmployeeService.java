@@ -92,19 +92,17 @@ public class EmployeeService {
         );
     }
 
-    /** Utilise le code stable du référentiel des postes, jamais son libellé. */
+    /** Le rôle de sécurité suit le poste lorsque le rôle correspondant existe. */
     private String resolveAccountRole(Employee employee) {
         if (teachers.findByEmployeeId(employee.getId()).isPresent()) return "ENSEIGNANT";
         String code = employee.getPosition() == null ? null : employee.getPosition().getCode();
-        if (code != null) {
-            switch (code.trim().toUpperCase(Locale.ROOT)) {
-                case "SURVEILLANT_GENERAL": return "SURVEILLANT_GENERAL";
-                case "SURVEILLANT_PRIMAIRE": return "SURVEILLANT_PRIMAIRE";
-                case "SURVEILLANT_COLLEGE": return "SURVEILLANT_COLLEGE";
-                case "SURVEILLANT_LYCEE": return "SURVEILLANT_LYCEE";
-                default: break;
-            }
-        }
+        if (code == null || code.isBlank())
+            throw new BusinessRuleException("Aucun poste n'est associé à cet employé.");
+        String normalized = code.trim().toUpperCase(Locale.ROOT);
+        // Le référentiel RH et le référentiel des rôles utilisent deux codes différents.
+        String candidate = "ASSISTANTE_ADMINISTRATIVE".equals(normalized) ? "ASSISTANTE" : normalized;
+        if (roles.findByCode(candidate).filter(Role::isActive).isPresent()) return candidate;
+        // Les postes sans rôle de sécurité dédié restent dans le profil administratif générique.
         return "STAFF_ADMINISTRATIF";
     }
 

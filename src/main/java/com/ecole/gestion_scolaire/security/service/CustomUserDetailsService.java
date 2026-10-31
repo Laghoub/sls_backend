@@ -68,6 +68,14 @@ public class CustomUserDetailsService implements UserDetailsService {
         );
     }
 
+    /** Recharge les autorisations depuis les profils et exceptions en base. */
+    @Transactional(readOnly = true)
+    public SecurityUser reloadById(Long accountId) {
+        UserAccount account = userAccountRepository.findById(accountId)
+                .orElseThrow(() -> new UsernameNotFoundException("Utilisateur introuvable."));
+        return new SecurityUser(account, loadAuthorities(account));
+    }
+
     private void unlockAccountIfLockExpired(UserAccount userAccount) {
 
         if (userAccount.getStatus() != UserAccountStatus.LOCKED) {
