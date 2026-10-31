@@ -3,9 +3,9 @@ spring:
     name: gestion-scolaire
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/gestion_scolaire_sls
-    username: postgres
-    password: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/gestion_scolaire_sls}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -26,8 +26,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:sls.school2008@gmail.com}
-    password: ${MAIL_PASSWORD:enoi rylu czqq hdch}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
