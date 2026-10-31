@@ -99,6 +99,7 @@ public class SecurityConfig {
                                 .csrfTokenRequestHandler(csrfTokenRequestHandler)
                                 .ignoringRequestMatchers(
                                         "/api/auth/login",
+                                        "/api/auth/password-reset/**",
                                         "/api/account-activation/public/**",
                                         "/api/website/public/**"
                                 )
@@ -128,6 +129,7 @@ public class SecurityConfig {
                         auth
                                 .requestMatchers(
                                         "/api/auth/login",
+                                        "/api/auth/password-reset/**",
                                         "/api/account-activation/public/**",
                                         "/api/website/public/**"
                                 )

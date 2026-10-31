@@ -8,7 +8,9 @@ public record AuthUserResponse(
         String username,
         boolean mustChangePassword,
         Set<String> roles,
-        Set<String> permissions
+        Set<String> permissions,
+        String firstName,
+        String lastName
 
 ) {
 }

@@ -23,24 +23,26 @@ public final class SharedSalaryReceiptPdf {
    var regular=new PDType1Font(Standard14Fonts.FontName.HELVETICA);
    var bold=new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
    try(PDPageContentStream cs=new PDPageContentStream(doc,page)){
-    cs.setNonStrokingColor(new Color(14,39,78));cs.addRect(0,755,595,87);cs.fill();
+    // Neutral receipt layout, aligned with the restrained parent-payment style.
+    cs.setStrokingColor(new Color(205,205,205));cs.setLineWidth(0.8f);
+    cs.addRect(35,35,525,772);cs.stroke();
     try(InputStream in=SharedSalaryReceiptPdf.class.getResourceAsStream("/sls-logo.png")){
-     if(in!=null){byte[] logo=in.readAllBytes();PDImageXObject img=PDImageXObject.createFromByteArray(doc,logo,"logo");float h=64f;float w=img.getWidth()*h/img.getHeight();cs.drawImage(img,42,766,Math.min(w,90),h);}
+     if(in!=null){byte[] logo=in.readAllBytes();PDImageXObject img=PDImageXObject.createFromByteArray(doc,logo,"logo");float h=55f;float w=img.getWidth()*h/img.getHeight();cs.drawImage(img,45,744,Math.min(w,85),h);}
     }
-    line(cs,bold,15,145,803,"GROUPE SCOLAIRE PRIVE SCIENCES ET LETTRES",true);
-    line(cs,regular,11,145,779,"RECU DE PAIEMENT - "+category,true);
-    cs.setStrokingColor(new Color(196,153,70));cs.setLineWidth(2);cs.moveTo(40,738);cs.lineTo(555,738);cs.stroke();
+    line(cs,bold,13,140,782,"GROUPE SCOLAIRE PRIVE SCIENCES ET LETTRES",false);
+    line(cs,regular,11,140,761,"RECU DE PAIEMENT - "+category,false);
+    cs.setStrokingColor(new Color(170,170,170));cs.setLineWidth(0.8f);cs.moveTo(45,731);cs.lineTo(550,731);cs.stroke();
     line(cs,bold,13,45,704,"RECU N° : "+receiptNumber,false);
     String[][] fields={{"Beneficiaire",name},{"Matricule",matricule},{"Periode",period},{"Date du paiement",date},
      {"Mode de paiement",method},{"Reference",reference},{"Salaire net",net+" DA"},
      {"Montant verse",amount+" DA"},{"Total verse",total+" DA"},{"Reste a payer",remaining+" DA"}};
     float y=665;
     for(int i=0;i<fields.length;i++){
-     if(i%2==0){cs.setNonStrokingColor(new Color(244,247,251));cs.addRect(40,y-10,515,31);cs.fill();}
+     if(i%2==0){cs.setNonStrokingColor(new Color(247,247,247));cs.addRect(40,y-10,515,31);cs.fill();}
      line(cs,bold,10,50,y+1,fields[i][0]+" :",false);
      line(cs,regular,10,215,y+1,fields[i][1],false);y-=35;
     }
-    cs.setStrokingColor(new Color(196,153,70));cs.moveTo(40,268);cs.lineTo(555,268);cs.stroke();
+    cs.setStrokingColor(new Color(175,175,175));cs.moveTo(40,268);cs.lineTo(555,268);cs.stroke();
     line(cs,regular,9,45,247,"Document emis par le Groupe Scolaire Prive Sciences et Lettres.",false);
     line(cs,regular,9,45,231,"Reimpression sans nouvel encaissement ni mouvement de caisse.",false);
    }

@@ -1,6 +1,7 @@
 package com.ecole.gestion_scolaire.security.service;
 
 import com.ecole.gestion_scolaire.identity.entity.UserAccount;
+import com.ecole.gestion_scolaire.identity.entity.Person;
 import com.ecole.gestion_scolaire.identity.repository.UserAccountRepository;
 import com.ecole.gestion_scolaire.security.dto.AuthUserResponse;
 import com.ecole.gestion_scolaire.security.dto.ChangePasswordRequest;
@@ -90,6 +91,7 @@ public class AuthService {
         userAccountRepository.save(userAccount);
     }
 
+    @Transactional(readOnly = true)
     public AuthUserResponse buildResponse(SecurityUser securityUser) {
 
         Set<String> roles = new LinkedHashSet<>();
@@ -106,12 +108,18 @@ public class AuthService {
             }
         }
 
+        // Resolve the person from the account while the transaction is active.
+        UserAccount account = userAccountRepository.findById(securityUser.getId())
+                .orElseThrow(() -> new IllegalStateException("Compte utilisateur introuvable."));
+        Person person = account.getPerson();
         return new AuthUserResponse(
                 securityUser.getId(),
                 securityUser.getUsername(),
                 securityUser.getUserAccount().isMustChangePassword(),
                 roles,
-                permissions
+                permissions,
+                person == null ? null : person.getFirstName(),
+                person == null ? null : person.getLastName()
         );
     }
 }
