@@ -32,9 +32,11 @@ spring:
       mail:
         smtp:
           auth: true
-          starttls:
+          ssl:
             enable: true
-            required: true
+          starttls:
+            enable: false
+            required: false
         debug: false
 
 
