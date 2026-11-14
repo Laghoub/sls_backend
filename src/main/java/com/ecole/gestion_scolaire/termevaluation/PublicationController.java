@@ -11,10 +11,125 @@ import java.util.*;
 public class PublicationController {
  private final NamedParameterJdbcTemplate db;
  public PublicationController(NamedParameterJdbcTemplate db){this.db=db;}
- @PostMapping("/campaigns/{campaignId}/students/{studentId}")
+ private static final String EXPECTED = """
+  WITH expected AS (
+   SELECT DISTINCT en.student_id,a.teacher_id,a.subject_id,a.class_group_id
+   FROM term_evaluation_campaign c
+   JOIN class_group cg ON cg.school_year_id=c.school_year_id
+   JOIN level l ON l.id=cg.level_id JOIN cycle cy ON cy.id=l.cycle_id
+   JOIN student_enrollment en ON en.school_year_id=c.school_year_id
+    AND en.current_class_group_id=cg.id AND en.status='ACTIVE'
+   JOIN teaching_assignment a ON a.school_year_id=c.school_year_id
+    AND a.class_group_id=cg.id AND a.status='ACTIVE'
+    AND a.start_date<=c.evaluation_to AND (a.end_date IS NULL OR a.end_date>=c.evaluation_from)
+   WHERE c.id=:campaign AND cg.id=:classId
+    AND (c.cycle_code IS NULL OR c.cycle_code=cy.code)
+    AND (NOT EXISTS(SELECT 1 FROM term_evaluation_campaign_class cc WHERE cc.campaign_id=c.id)
+     OR EXISTS(SELECT 1 FROM term_evaluation_campaign_class cc WHERE cc.campaign_id=c.id AND cc.class_group_id=cg.id))
+  )
+  """;
+
+ /** État réel de publication par classe, sans dépendre des filtres du tableau. */
+ @GetMapping("/campaigns/{campaignId}/classes")
+ @PreAuthorize("hasAuthority('EVALUATION_TRIMESTRIELLE_CONTROLER')")
+ public List<Map<String,Object>> classes(@PathVariable Long campaignId){
+  if(Boolean.FALSE.equals(db.queryForObject("SELECT EXISTS(SELECT 1 FROM term_evaluation_campaign WHERE id=:id)",Map.of("id",campaignId),Boolean.class)))
+   throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Campagne introuvable");
+  var classRows=db.queryForList("""
+   SELECT cg.id AS class_group_id,cg.name AS class_name,
+    (SELECT count(DISTINCT en.student_id) FROM student_enrollment en
+     WHERE en.school_year_id=c.school_year_id AND en.current_class_group_id=cg.id AND en.status='ACTIVE') AS student_count,
+    (SELECT count(*) FROM teaching_assignment a WHERE a.school_year_id=c.school_year_id AND a.class_group_id=cg.id
+     AND a.status='ACTIVE' AND a.start_date<=c.evaluation_to AND (a.end_date IS NULL OR a.end_date>=c.evaluation_from)) AS assignment_count,
+    (SELECT count(*) FROM term_evaluation_publication pub JOIN student_enrollment en ON en.student_id=pub.student_id
+     WHERE pub.campaign_id=c.id AND en.school_year_id=c.school_year_id AND en.current_class_group_id=cg.id
+      AND en.status='ACTIVE') AS publication_count
+   FROM term_evaluation_campaign c JOIN class_group cg ON cg.school_year_id=c.school_year_id
+   JOIN level l ON l.id=cg.level_id JOIN cycle cy ON cy.id=l.cycle_id
+   WHERE c.id=:campaign AND (c.cycle_code IS NULL OR c.cycle_code=cy.code)
+    AND (NOT EXISTS(SELECT 1 FROM term_evaluation_campaign_class cc WHERE cc.campaign_id=c.id)
+     OR EXISTS(SELECT 1 FROM term_evaluation_campaign_class cc WHERE cc.campaign_id=c.id AND cc.class_group_id=cg.id))
+   ORDER BY cg.name
+   """,Map.of("campaign",campaignId));
+  for(var row:classRows){
+   var params=new MapSqlParameterSource().addValue("campaign",campaignId)
+    .addValue("classId",((Number)row.get("class_group_id")).longValue());
+   var counts=db.queryForMap(EXPECTED+"""
+    SELECT count(*) AS expected_count,count(*) FILTER (WHERE e.status='APPROVED') AS approved_count
+    FROM expected x LEFT JOIN term_student_evaluation e ON e.campaign_id=:campaign
+     AND e.student_id=x.student_id AND e.teacher_id=x.teacher_id
+     AND e.subject_id=x.subject_id AND e.class_group_id=x.class_group_id
+    """,params);
+   long expected=((Number)counts.get("expected_count")).longValue();
+   long approved=((Number)counts.get("approved_count")).longValue();
+   long studentCount=((Number)row.get("student_count")).longValue();
+   long publicationCount=((Number)row.get("publication_count")).longValue();
+   boolean isPublished=publicationCount>0;
+   row.put("expected_count",expected);
+   row.put("approved_count",approved);
+   row.put("approval_percent",expected==0?0:Math.round(approved*1000.0/expected)/10.0);
+   row.put("publication_status",isPublished?(publicationCount==studentCount?"PUBLISHED":"PARTIALLY_PUBLISHED"):"NOT_PUBLISHED");
+   row.put("can_publish",studentCount>0 && expected>0 && approved==expected && !isPublished);
+  }
+  return classRows;
+ }
+
+ /** Publication tout-ou-rien, seulement si chaque évaluation attendue est APPROVED. */
+ @PostMapping("/campaigns/{campaignId}/classes/{classId}")
  @PreAuthorize("hasAuthority('EVALUATION_TRIMESTRIELLE_PUBLIER')")
  @Transactional
- public Map<String,Object> publish(@PathVariable Long campaignId,@PathVariable Long studentId){
+ public Map<String,Object> publishClass(@PathVariable Long campaignId,@PathVariable Long classId){
+  var p=new MapSqlParameterSource().addValue("campaign",campaignId).addValue("classId",classId);
+  // Sérialise les publications concurrentes d'une même campagne.
+  var campaign=db.queryForList("SELECT id FROM term_evaluation_campaign WHERE id=:campaign FOR UPDATE",p);
+  if(campaign.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Campagne introuvable");
+  var students=db.queryForList("""
+   SELECT DISTINCT en.student_id FROM student_enrollment en
+   JOIN term_evaluation_campaign c ON c.school_year_id=en.school_year_id
+   JOIN class_group cg ON cg.id=en.current_class_group_id
+   JOIN level l ON l.id=cg.level_id JOIN cycle cy ON cy.id=l.cycle_id
+   WHERE c.id=:campaign AND cg.id=:classId AND en.status='ACTIVE'
+    AND (c.cycle_code IS NULL OR c.cycle_code=cy.code)
+    AND (NOT EXISTS(SELECT 1 FROM term_evaluation_campaign_class cc WHERE cc.campaign_id=c.id)
+     OR EXISTS(SELECT 1 FROM term_evaluation_campaign_class cc WHERE cc.campaign_id=c.id AND cc.class_group_id=cg.id))
+   ORDER BY en.student_id
+   """,p);
+  if(students.isEmpty())throw new ResponseStatusException(HttpStatus.CONFLICT,"Classe sans élèves actifs ou hors campagne");
+  var totals=db.queryForMap(EXPECTED+"""
+   SELECT count(*) AS expected_count,
+    count(*) FILTER (WHERE e.status='APPROVED') AS approved_count
+   FROM expected x LEFT JOIN term_student_evaluation e
+    ON e.campaign_id=:campaign AND e.student_id=x.student_id AND e.teacher_id=x.teacher_id
+    AND e.subject_id=x.subject_id AND e.class_group_id=x.class_group_id
+   """,p);
+  long expected=((Number)totals.get("expected_count")).longValue();
+  long approved=((Number)totals.get("approved_count")).longValue();
+  if(expected==0 || expected!=approved)throw new ResponseStatusException(HttpStatus.CONFLICT,
+   "Publication refusée : toutes les évaluations de la classe doivent être approuvées ("+approved+"/"+expected+")");
+  var existing=db.queryForObject("""
+   SELECT count(DISTINCT pub.student_id) FROM term_evaluation_publication pub
+   JOIN student_enrollment en ON en.student_id=pub.student_id
+   JOIN term_evaluation_campaign c ON c.school_year_id=en.school_year_id
+   WHERE c.id=:campaign AND pub.campaign_id=:campaign AND en.current_class_group_id=:classId AND en.status='ACTIVE'
+   """,p,Long.class);
+  if(existing!=null && existing>0)throw new ResponseStatusException(HttpStatus.CONFLICT,
+   "Publication déjà effectuée pour au moins un élève de cette classe");
+  // Vérifie l'absence d'évaluations hors périmètre non approuvées avant toute insertion.
+  var incomplete=db.queryForObject("""
+   SELECT count(*) FROM term_student_evaluation e
+   WHERE e.campaign_id=:campaign AND e.class_group_id=:classId AND e.status<>'APPROVED'
+   """,p,Long.class);
+  if(incomplete!=null && incomplete>0)throw new ResponseStatusException(HttpStatus.CONFLICT,"Des évaluations de la classe ne sont pas approuvées");
+  int published=0;
+  for(var student:students){
+   publishStudent(campaignId,((Number)student.get("student_id")).longValue());
+   published++;
+  }
+  return Map.of("campaignId",campaignId,"classGroupId",classId,"status","PUBLISHED","publishedCount",published);
+ }
+
+ // Publication individuelle désactivée : seule la publication atomique par classe est exposée.
+ private Map<String,Object> publishStudent(Long campaignId,Long studentId){
   var params=new MapSqlParameterSource().addValue("campaign",campaignId).addValue("student",studentId);
   var rows=db.queryForList("""
    SELECT e.id,e.subject_id,e.teacher_id,e.class_group_id,e.observation,e.difficulties,e.recommendations,

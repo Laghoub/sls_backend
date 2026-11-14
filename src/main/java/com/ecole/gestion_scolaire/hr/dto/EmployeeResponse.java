@@ -19,5 +19,7 @@ public record EmployeeResponse(
         LocalDate hireDate,
         LocalDate endDate,
         EmploymentStatus status,
-        boolean hasUserAccount
+        boolean hasUserAccount,
+        String socialSecurityNumber,
+        String maritalStatus
 ) {}

@@ -191,7 +191,8 @@ public class EmployeeService {
                 e.getCampus() == null ? null : e.getCampus().getId(),
                 e.getCampus() == null ? null : e.getCampus().getName(),
                 e.getHireDate(), e.getEndDate(), e.getEmploymentStatus(),
-                users.findByPersonId(p.getId()).isPresent()
+                users.findByPersonId(p.getId()).isPresent(),
+                e.getSocialSecurityNumber(), e.getMaritalStatus()
         );
     }
 }
