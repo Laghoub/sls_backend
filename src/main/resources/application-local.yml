@@ -1,0 +1,18 @@
+spring:
+  mail:
+    port: 587
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: false
+          starttls:
+            enable: true
+            required: true
+        debug: false
+
+logging:
+  level:
+    org.springframework.mail: DEBUG
+    org.eclipse.angus.mail: DEBUG

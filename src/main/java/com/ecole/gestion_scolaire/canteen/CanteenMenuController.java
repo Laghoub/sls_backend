@@ -20,6 +20,19 @@ public class CanteenMenuController {
  public record SaveMenu(LocalDate weekStart, List<Day> days) {}
 
  private static LocalDate sunday(LocalDate date){return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));}
+ // Accepte les dates ISO locales et les anciens horodatages UTC envoyés par le frontend.
+ // La date métier de la cantine est toujours interprétée dans le fuseau de l'école.
+ private static LocalDate parseWeekStart(String raw) {
+  try {
+   return LocalDate.parse(raw);
+  } catch (java.time.format.DateTimeParseException ignored) {
+   try {
+    return OffsetDateTime.parse(raw).atZoneSameInstant(ZoneId.of("Africa/Algiers")).toLocalDate();
+   } catch (java.time.format.DateTimeParseException ex) {
+    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "weekStart invalide : format yyyy-MM-dd attendu", ex);
+   }
+  }
+ }
  private static void validate(SaveMenu m){
   if(m==null || m.weekStart()==null || !m.weekStart().equals(sunday(m.weekStart()))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"weekStart doit être un dimanche");
   if(m.days()==null || m.days().isEmpty() || m.days().size()>5) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Entre 1 et 5 jours requis");
@@ -48,10 +61,11 @@ public class CanteenMenuController {
  @PutMapping("/{weekStart}/publication")
  @Transactional
  @PreAuthorize("hasAuthority('CANTINE_MENU_PUBLIER')")
- public Map<String,Object> publish(@PathVariable LocalDate weekStart,@RequestParam boolean published){
-  int n=db.update("UPDATE canteen_weekly_menu SET status=?,published_at=?,updated_at=now() WHERE week_start=?",published?"PUBLISHED":"DRAFT",published?java.sql.Timestamp.from(Instant.now()):null,weekStart);
+ public Map<String,Object> publish(@PathVariable String weekStart,@RequestParam boolean published){
+  LocalDate date = parseWeekStart(weekStart);
+  int n=db.update("UPDATE canteen_weekly_menu SET status=?,published_at=?,updated_at=now() WHERE week_start=?",published?"PUBLISHED":"DRAFT",published?java.sql.Timestamp.from(Instant.now()):null,date);
   if(n==0) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Menu introuvable");
-  return detail(weekStart,false);
+  return detail(date,false);
  }
 
  @GetMapping
@@ -60,7 +74,7 @@ public class CanteenMenuController {
 
  @GetMapping("/{weekStart}")
  @PreAuthorize("hasAuthority('CANTINE_MENU_CONSULTER')")
- public Map<String,Object> detailAdmin(@PathVariable LocalDate weekStart){return detail(weekStart,false);}
+ public Map<String,Object> detailAdmin(@PathVariable String weekStart){return detail(parseWeekStart(weekStart),false);}
 
  @GetMapping("/current")
  @PreAuthorize("hasAuthority('PORTAIL_PARENT_ACCEDER')")
