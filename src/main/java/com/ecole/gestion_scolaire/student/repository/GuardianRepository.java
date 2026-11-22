@@ -14,11 +14,14 @@ public interface GuardianRepository extends JpaRepository<Guardian, Long> {
 
     boolean existsByPersonId(Long personId);
 
+    List<Guardian> findByStatusNotIgnoreCase(String status);
+
     @Query("""
         SELECT g
         FROM Guardian g
         JOIN g.person p
-        WHERE
+        WHERE UPPER(g.status) <> 'MERGED'
+          AND (
             :search IS NULL
             OR :search = ''
             OR LOWER(p.lastName)
@@ -35,6 +38,7 @@ public interface GuardianRepository extends JpaRepository<Guardian, Long> {
                 LIKE LOWER(CONCAT('%', :search, '%'))
             OR LOWER(g.status)
                 LIKE LOWER(CONCAT('%', :search, '%'))
+          )
         """)
     Page<Guardian> search(
             @Param("search") String search,

@@ -33,7 +33,7 @@ public class GuardianService {
     }
 
     public List<GuardianResponse> findAll() {
-        return repo.findAll().stream().map(this::toResponse).toList();
+        return repo.findByStatusNotIgnoreCase("MERGED").stream().map(this::toResponse).toList();
     }
 
     public GuardianResponse findById(Long id) {

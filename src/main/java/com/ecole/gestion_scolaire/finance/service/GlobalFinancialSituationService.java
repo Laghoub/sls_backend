@@ -146,7 +146,7 @@ public class GlobalFinancialSituationService {
             var g = guardians.findById(entry.getKey())
                     .orElse(null);
 
-            if (g == null) {
+            if (g == null || "MERGED".equalsIgnoreCase(g.getStatus())) {
                 continue;
             }
 
